@@ -32,3 +32,12 @@ Object.defineProperty(exports, "Extensions", {
   enumerable: true,
   get: function () { return chunk6NYM5ZKZ_cjs.Extensions; }
 });
+
+Object.defineProperty(exports, "PiloxA2AServer", {
+  enumerable: true,
+  get: function () { return exports.HiveA2AServer; }
+});
+Object.defineProperty(exports, "PiloxA2AClient", {
+  enumerable: true,
+  get: function () { return exports.HiveA2AClient; }
+});

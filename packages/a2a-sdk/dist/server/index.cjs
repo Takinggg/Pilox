@@ -71,3 +71,12 @@ Object.defineProperty(exports, "A2AError", {
   enumerable: true,
   get: function () { return chunk6NYM5ZKZ_cjs.A2AError; }
 });
+
+Object.defineProperty(exports, "PiloxA2AServer", {
+  enumerable: true,
+  get: function () { return exports.HiveA2AServer; }
+});
+Object.defineProperty(exports, "PiloxRequestHandler", {
+  enumerable: true,
+  get: function () { return exports.HiveRequestHandler; }
+});

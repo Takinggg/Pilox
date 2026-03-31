@@ -46,6 +46,7 @@ jobs:
       - run: npm ci
       - run: npm run build
         env:
+          DATABASE_URL: postgres://fake:fake@localhost:5432/fake
           AUTH_SECRET: ci-build-secret-not-real-at-least-32-chars
           AUTH_URL: http://localhost:3000
           ENCRYPTION_KEY: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa

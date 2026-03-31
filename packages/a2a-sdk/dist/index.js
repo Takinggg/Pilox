@@ -7,3 +7,6 @@ import './chunk-R5AGGCWU.js';
 export { AGENT_CARD_PATH, HTTP_EXTENSION_HEADER } from './chunk-JKJJLJQL.js';
 import './chunk-BFTDQG3V.js';
 export { Extensions } from './chunk-TT7THEVJ.js';
+
+export { HiveA2AServer as PiloxA2AServer } from "./chunk-FEMXYOIH.js";
+export { HiveA2AClient as PiloxA2AClient } from "./chunk-GCMAJIJB.js";
