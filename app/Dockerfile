@@ -9,6 +9,10 @@ RUN apk add --no-cache libc6-compat
 WORKDIR /build
 COPY packages/a2a-sdk ./packages/a2a-sdk
 COPY packages/pilox-buyer-config ./packages/pilox-buyer-config
+# Install SDK dependencies first (file: deps need their node_modules)
+WORKDIR /build/packages/a2a-sdk
+RUN npm ci --omit=dev
+WORKDIR /build
 COPY app/package.json app/package-lock.json ./app/
 WORKDIR /build/app
 RUN npm ci
