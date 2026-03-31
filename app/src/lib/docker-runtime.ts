@@ -196,7 +196,12 @@ async function createVM(
         Binds: volumeBinds,
         DeviceRequests: deviceRequests,
         NetworkMode: "none", // isolated by default; attached to agent network after creation
-        SecurityOpt: ["no-new-privileges:true"],
+        SecurityOpt: [
+          "no-new-privileges:true",
+          ...(process.env.PILOX_SECCOMP_PROFILE
+            ? [`seccomp=${process.env.PILOX_SECCOMP_PROFILE}`]
+            : []),
+        ],
         CapDrop: ["ALL"],
         CapAdd: ["NET_BIND_SERVICE"], // only allow binding to ports < 1024
         ReadonlyRootfs: false, // agents may need to write temp files

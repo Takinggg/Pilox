@@ -190,6 +190,13 @@
       "when": 1776412800000,
       "tag": "0026_instance_public_registry_hub",
       "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1776499200000,
+      "tag": "0027_time_series_indexes",
+      "breakpoints": true
     }
   ]
 }
