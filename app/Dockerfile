@@ -23,9 +23,7 @@ COPY app .
 
 ENV NEXT_TELEMETRY_DISABLED=1
 
-# Build local @pilox/a2a-sdk (dist/) — must install SDK devDependencies (tsup); avoid NODE_ENV=production here.
-WORKDIR /build/packages/a2a-sdk
-RUN npm ci --include=dev && npm run build
+# @pilox/a2a-sdk uses prebuilt dist/ checked into the repo — no build needed here.
 WORKDIR /build/app
 
 ENV NODE_ENV=production
@@ -83,7 +81,7 @@ ENV HOSTNAME="0.0.0.0"
 
 # Public LB-style probe — do not use /api/system/health (viewer+ auth required)
 HEALTHCHECK --interval=30s --timeout=5s --start-period=40s --retries=3 \
-  CMD wget -qO- http://localhost:3000/api/health || exit 1
+  CMD wget -qO- http://127.0.0.1:3000/api/health || exit 1
 
 ENTRYPOINT ["tini", "--", "./docker-entrypoint.sh"]
 CMD ["node", "server.js"]
