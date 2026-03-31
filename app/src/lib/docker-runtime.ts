@@ -37,6 +37,23 @@ const LABEL_CREATED_AT = "pilox-created-at";
 /** Docker network for agent containers. Must match docker-compose network. */
 const AGENT_NETWORK = process.env.PILOX_DOCKER_NETWORK || "pilox-network";
 
+/**
+ * Docker image allowlist. Only images matching these prefixes can be deployed.
+ * Set PILOX_DOCKER_IMAGE_ALLOWLIST as comma-separated prefixes.
+ * Empty = allow all (default for dev, MUST be set in production).
+ */
+function getImageAllowlist(): string[] {
+  const raw = process.env.PILOX_DOCKER_IMAGE_ALLOWLIST?.trim();
+  if (!raw) return [];
+  return raw.split(",").map((s) => s.trim()).filter(Boolean);
+}
+
+function isImageAllowed(image: string): boolean {
+  const allowlist = getImageAllowlist();
+  if (allowlist.length === 0) return true; // no allowlist = allow all (dev mode)
+  return allowlist.some((prefix) => image.startsWith(prefix));
+}
+
 // Rate limiting
 const MAX_CONCURRENT_CREATES = 10;
 let activeCreates = 0;
@@ -113,6 +130,14 @@ async function createVM(
     const cpuNanos = Math.round(parseCpuLimit(opts.cpuLimit) * 1e9);
     const memBytes = parseMemoryLimit(opts.memoryLimit);
 
+    // Validate image against allowlist
+    if (!isImageAllowed(opts.image)) {
+      throw new Error(
+        `Image "${opts.image}" is not in the allowed image list. ` +
+        `Set PILOX_DOCKER_IMAGE_ALLOWLIST to permit this image.`
+      );
+    }
+
     // Ensure image is available (pull if needed)
     try {
       await docker.getImage(opts.image).inspect();
@@ -170,6 +195,7 @@ async function createVM(
         RestartPolicy: { Name: "unless-stopped", MaximumRetryCount: 0 },
         Binds: volumeBinds,
         DeviceRequests: deviceRequests,
+        NetworkMode: "none", // isolated by default; attached to agent network after creation
         SecurityOpt: ["no-new-privileges:true"],
         CapDrop: ["ALL"],
         CapAdd: ["NET_BIND_SERVICE"], // only allow binding to ports < 1024
