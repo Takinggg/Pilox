@@ -7,7 +7,6 @@
   },
   "scripts": {
     "build:a2a-sdk": "npm run build --prefix ../packages/a2a-sdk",
-    "prebuild": "npm run build:a2a-sdk",
     "dev": "next dev",
     "build": "next build",
     "postbuild": "node scripts/fix-standalone-client-manifests.mjs",

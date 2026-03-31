@@ -78,6 +78,20 @@ export async function authorize(minimumRole: Role = "viewer") {
   const userLevel = ROLE_HIERARCHY[userRole];
   const requiredLevel = ROLE_HIERARCHY[minimumRole];
 
+  // ── MFA enforcement: reject pre-MFA sessions from API access ──
+  if (
+    (session.user as { mfaRequired?: boolean }).mfaRequired &&
+    !(session.user as { mfaVerified?: boolean }).mfaVerified
+  ) {
+    return {
+      authorized: false as const,
+      response: NextResponse.json(
+        { error: "MFA verification required" },
+        { status: 403 }
+      ),
+    };
+  }
+
   if (userLevel < requiredLevel) {
     return {
       authorized: false as const,

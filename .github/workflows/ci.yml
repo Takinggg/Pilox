@@ -42,8 +42,6 @@ jobs:
           cache: npm
           cache-dependency-path: app/package-lock.json
       - run: npm ci
-      - run: npm ci
-        working-directory: packages/a2a-sdk
       - run: npm run build
         env:
           AUTH_SECRET: ci-build-secret-not-real-at-least-32-chars
