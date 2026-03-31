@@ -1,0 +1,44 @@
+# Example CronJob — periodic P3 smoke with NATS *core* (no JetStream / no stream).
+# Expects Secret p3-bridge-nats-smoke-core (create via p3-bridge-nats-smoke-job-core.example.yaml or manually).
+#
+#   kubectl apply -f p3-bridge-nats-smoke-job-core.example.yaml   # optional: one-off Job + Secret
+#   kubectl delete job p3-bridge-nats-smoke-core -n default --ignore-not-found
+#   kubectl apply -f p3-bridge-nats-smoke-cronjob-core.example.yaml
+#
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: p3-bridge-nats-smoke-core
+  namespace: default
+spec:
+  schedule: "*/15 * * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 2
+  failedJobsHistoryLimit: 4
+  startingDeadlineSeconds: 120
+  jobTemplate:
+    spec:
+      ttlSecondsAfterFinished: 900
+      backoffLimit: 1
+      template:
+        spec:
+          restartPolicy: Never
+          containers:
+            - name: smoke
+              image: pilox-transport-bridge:local
+              imagePullPolicy: IfNotPresent
+              command: ["node", "scripts/p3-nats-smoke.mjs"]
+              env:
+                - name: BRIDGE_HTTP_URL
+                  value: "http://pilox-transport-bridge-bridge.default.svc.cluster.local:4081"
+                - name: BRIDGE_NATS_URL
+                  value: "nats://nats.default.svc.cluster.local:4222"
+                - name: BRIDGE_NATS_MODE
+                  value: "core"
+                - name: SMOKE_NATS_MODE
+                  value: "core"
+                - name: BRIDGE_NATS_SUBJECT
+                  value: "pilox.mesh.wan"
+              envFrom:
+                - secretRef:
+                    name: p3-bridge-nats-smoke-core

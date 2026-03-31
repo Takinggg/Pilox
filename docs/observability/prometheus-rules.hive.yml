@@ -1,0 +1,64 @@
+# Règles d'alerte Prometheus — Hive (stack locale + modèle pour prod).
+# Les noms de métriques supposent OTel → Prometheus (underscores) et spanmetrics `namespace: hive_span`.
+# Ajustez les seuils (`> …`) selon vos SLO ; vérifiez les labels réels dans Prometheus → Status → Targets → métriques.
+
+groups:
+  - name: hive_http_spanmetrics
+    interval: 30s
+    rules:
+      - alert: HiveHttpP99LatencyHigh
+        expr: |
+          histogram_quantile(
+            0.99,
+            sum(rate(hive_span_duration_milliseconds_bucket[5m])) by (le)
+          ) > 5000
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "P99 latence HTTP (spanmetrics) > 5s"
+          description: |
+            Le P99 agrégé des durées `hive_span_duration_milliseconds` dépasse 5s pendant 10 min.
+            Vérifier charge, routes lentes, base ou réseau. Dashboard : Hive — mesh A2A (panneaux spanmetrics).
+
+      - alert: HiveHttp5xxSpike
+        expr: |
+          sum(rate(hive_span_calls_total{http_response_status_code=~"5.."}[5m])) > 0.2
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Taux d’erreurs HTTP 5xx (spanmetrics) élevé"
+          description: |
+            Plus de 0,2 req/s comptées avec `http_response_status_code` 5xx (agrégé).
+            Affiner le seuil si le trafic est faible (risque de faux positifs).
+
+  - name: hive_mesh_metrics
+    interval: 30s
+    rules:
+      - alert: HiveMeshRateLimitBlockedElevated
+        expr: |
+          sum(rate(hive_mesh_rate_limit_blocked_total[5m])) > 0.5
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Refus rate-limit mesh soutenus"
+          description: |
+            `rate(hive_mesh_rate_limit_blocked_total)` > 0,5/s en moyenne sur 5m.
+            Vérifier saturation clients, quotas, ou attaques. Voir `MESH_OBSERVABILITY.md`.
+
+      - alert: HiveMeshA2aRpcP99High
+        expr: |
+          histogram_quantile(
+            0.99,
+            sum(rate(hive_mesh_a2a_rpc_duration_ms_bucket[5m])) by (le)
+          ) > 10
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "P99 latence JSON-RPC A2A > 10s"
+          description: |
+            Histogramme applicatif `hive_mesh_a2a_rpc_duration_ms` (unités selon exposition ; ajuster si besoin).
+            Corréler avec spans `mesh.a2a.jsonrpc` et rate limit.

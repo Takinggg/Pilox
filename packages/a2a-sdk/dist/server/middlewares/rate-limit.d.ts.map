@@ -1,0 +1,1 @@
+{"version":3,"file":"rate-limit.d.ts","sourceRoot":"","sources":["../../../src/server/middlewares/rate-limit.ts"],"names":[],"mappings":"AAAA,OAAO,KAAK,EAAE,eAAe,EAAE,MAAM,uBAAuB,CAAC;AAC7D,OAAO,KAAK,EAAE,UAAU,EAAE,uBAAuB,EAAE,MAAM,2BAA2B,CAAC;AAGrF,wBAAgB,yBAAyB,CACvC,MAAM,EAAE,eAAe,GACtB,UAAU,CAAC,uBAAuB,CAAC,CAwBrC"}

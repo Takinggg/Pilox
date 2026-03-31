@@ -1,0 +1,17 @@
+{
+  "schema": "hive-registry-record-v1",
+  "handle": "urn:hive:agent:example:demo-record",
+  "updatedAt": "2026-03-20T00:00:00Z",
+  "ttlSecondsRecommended": 3600,
+  "agentCardUrl": "https://demo.example/.well-known/agent-card.json",
+  "meshDescriptorUrl": "https://demo.example/.well-known/hive-mesh.json",
+  "capabilities": ["a2a-jsonrpc"],
+  "publicKeys": {
+    "ed25519": [
+      {
+        "kid": "k1",
+        "publicKeyHex": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      }
+    ]
+  }
+}

@@ -1,0 +1,6 @@
+apiVersion: v2
+name: pilox-transport-bridge
+description: Helm chart for the P3 HTTP transport bridge (wan-envelope-v1) and optional NATS subscriber → Pilox ingress
+type: application
+version: 0.1.0
+appVersion: "0.1.0"

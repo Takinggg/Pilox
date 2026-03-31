@@ -1,0 +1,36 @@
+[Unit]
+Description=Hive PostgreSQL Database (Docker)
+Documentation=https://hive-os.dev/docs
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=simple
+Restart=always
+RestartSec=5
+
+ExecStartPre=-/usr/bin/docker rm -f hive-postgres
+ExecStart=/usr/bin/docker run \
+    --name hive-postgres \
+    --network hive-network \
+    -e POSTGRES_USER=hive \
+    -e POSTGRES_DB=hive \
+    -e POSTGRES_HOST_AUTH_METHOD=scram-sha-256 \
+    -e POSTGRES_INITDB_ARGS=--auth-host=scram-sha-256 \
+    -v hive-pgdata:/var/lib/postgresql/data \
+    -p 127.0.0.1:5432:5432 \
+    --health-cmd="pg_isready -U hive" \
+    --health-interval=10s \
+    --health-timeout=5s \
+    --health-retries=5 \
+    postgres:16-bookworm
+
+ExecStop=/usr/bin/docker stop -t 30 hive-postgres
+ExecStopPost=-/usr/bin/docker rm -f hive-postgres
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=hive-db
+
+[Install]
+WantedBy=multi-user.target

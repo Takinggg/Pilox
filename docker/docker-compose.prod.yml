@@ -1,0 +1,214 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-hive}
+      POSTGRES_USER: ${POSTGRES_USER:-hive}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./postgres-init.sh:/docker-entrypoint-initdb.d/99-harden-role.sh:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-hive} -d ${POSTGRES_DB:-hive}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - pilox-network
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - pilox-network
+
+  pilox-app:
+    build:
+      context: ..
+      dockerfile: app/Dockerfile
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-hive}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-hive}
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
+      AUTH_URL: ${AUTH_URL:-http://localhost:3000}
+      AUTH_SECRET: ${AUTH_SECRET:?AUTH_SECRET is required}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:?ENCRYPTION_KEY is required}
+      # Optional ≥32 chars — required by /setup + POST /api/setup until first admin exists
+      PILOX_SETUP_TOKEN: ${PILOX_SETUP_TOKEN:-}
+      # Set to 1 to skip auto-migrations at container start (e.g. external migrate job / multi-replica)
+      PILOX_SKIP_MIGRATE: ${PILOX_SKIP_MIGRATE:-}
+      # Set to 1 to skip marketplace_catalog_rows rebuild after migrate (e.g. secondary replicas)
+      PILOX_SKIP_MARKETPLACE_INDEX: ${PILOX_SKIP_MARKETPLACE_INDEX:-}
+      # Serve marketplace list from Postgres index when db (rebuilt at container start); see app/.env.example
+      MARKETPLACE_CATALOG_SOURCE: ${MARKETPLACE_CATALOG_SOURCE:-db}
+      DOCKER_HOST: ${DOCKER_HOST:-/var/run/docker.sock}
+      # PEFT adapter baked into image (npm run dataset:fetch-modal-lora before docker build)
+      PILOX_COPILOT_LORA_PATH: /app/models/hive-copilot-lora/lora-hive-copilot
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-changeme}
+      # Marketplace self-registration: set PILOX_MARKETPLACE_HUB_URL fleet-wide (or PILOX_MARKETPLACE_URL).
+      # With hub MARKETPLACE_OPEN_NODE_REGISTRATION=true, no shared secret needed — token persisted in volume.
+      PILOX_MARKETPLACE_URL: ${PILOX_MARKETPLACE_URL:-}
+      PILOX_MARKETPLACE_HUB_URL: ${PILOX_MARKETPLACE_HUB_URL:-}
+      PILOX_MARKETPLACE_NODE_SECRET: ${PILOX_MARKETPLACE_NODE_SECRET:-}
+      PILOX_MARKETPLACE_NODE_STATE_FILE: ${PILOX_MARKETPLACE_NODE_STATE_FILE:-/data/hive/marketplace-node.json}
+      # PILOX_MARKETPLACE_DISABLE_OPEN_REGISTER=true — require PILOX_MARKETPLACE_NODE_SECRET (no anonymous register)
+      PILOX_NODE_NAME: ${PILOX_NODE_NAME:-}
+      PILOX_NODE_REGION: ${PILOX_NODE_REGION:-}
+      # Client IP for rate limits / federation (see docs/PRODUCTION.md section 4.1)
+      PILOX_CLIENT_IP_SOURCE: ${PILOX_CLIENT_IP_SOURCE:-}
+      # SSRF-safe egress: allowlist private hostnames for import, webhooks, workflow HTTP, etc. (section 4.2)
+      PILOX_EGRESS_FETCH_HOST_ALLOWLIST: ${PILOX_EGRESS_FETCH_HOST_ALLOWLIST:-}
+      PILOX_EGRESS_FETCH_MAX_REDIRECTS: ${PILOX_EGRESS_FETCH_MAX_REDIRECTS:-}
+      PILOX_WORKFLOW_DISABLE_CODE_NODE: ${PILOX_WORKFLOW_DISABLE_CODE_NODE:-}
+      MESH_WAN_REDIS_WORKER_MODE: ${MESH_WAN_REDIS_WORKER_MODE:-}
+      MESH_WAN_REDIS_WORKER_WEBHOOK_URL: ${MESH_WAN_REDIS_WORKER_WEBHOOK_URL:-}
+      MESH_WAN_REDIS_WORKER_WEBHOOK_BEARER: ${MESH_WAN_REDIS_WORKER_WEBHOOK_BEARER:-}
+      MESH_WAN_WEBHOOK_MAX_ATTEMPTS: ${MESH_WAN_WEBHOOK_MAX_ATTEMPTS:-}
+      MESH_WAN_WEBHOOK_RETRY_BASE_MS: ${MESH_WAN_WEBHOOK_RETRY_BASE_MS:-}
+      # OpenTelemetry (optional — laisser vide pour désactiver, voir docs/MESH_OBSERVABILITY.md)
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
+      OTEL_SERVICE_NAME: ${OTEL_SERVICE_NAME:-hive}
+      OTEL_METRIC_EXPORT_INTERVAL_MS: ${OTEL_METRIC_EXPORT_INTERVAL_MS:-10000}
+      # UI native /observability (admin) — même réseau que Prometheus (profil observability)
+      PROMETHEUS_OBSERVABILITY_URL: ${PROMETHEUS_OBSERVABILITY_URL:-}
+      TEMPO_OBSERVABILITY_URL: ${TEMPO_OBSERVABILITY_URL:-}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - pilox_marketplace_node_state:/data/hive
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      # /api/health is unauthenticated; /api/system/health requires viewer session
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/api/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.hive.rule=Host(`${PILOX_DOMAIN:-localhost}`)"
+      - "traefik.http.routers.hive.entrypoints=websecure"
+      - "traefik.http.routers.hive.tls.certresolver=letsencrypt"
+      - "traefik.http.services.hive.loadbalancer.server.port=3000"
+    networks:
+      - pilox-network
+
+  traefik:
+    image: traefik:v3.3
+    restart: unless-stopped
+    command:
+      - "--api.dashboard=false"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--providers.docker.network=pilox-network"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      - "--entrypoints.web.http.redirections.entrypoint.to=websecure"
+      - "--entrypoints.web.http.redirections.entrypoint.scheme=https"
+      - "--certificatesresolvers.letsencrypt.acme.email=${ACME_EMAIL:-admin@example.com}"
+      - "--certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json"
+      - "--certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=web"
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - traefik_certs:/letsencrypt
+    healthcheck:
+      test: ["CMD", "traefik", "healthcheck"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    networks:
+      - pilox-network
+
+  # --- Observabilité (profil `observability`) : Tempo + Prometheus + OTel Collector (sans Grafana).
+  # Voir docs/observability/README.md et PRODUCTION.md §9.
+  tempo:
+    profiles: ["observability"]
+    image: grafana/tempo:2.5.0
+    restart: unless-stopped
+    command: ["-config.file=/etc/tempo.yaml"]
+    volumes:
+      - ../docs/observability/tempo-local.yaml:/etc/tempo.yaml:ro
+      - tempo_data:/var/tempo
+    expose:
+      - "4318"
+      - "4317"
+    networks:
+      - pilox-network
+
+  otel-collector:
+    profiles: ["observability"]
+    image: otel/opentelemetry-collector-contrib:0.118.0
+    restart: unless-stopped
+    command: ["--config=/etc/otelcol/config.yaml"]
+    depends_on:
+      - tempo
+    volumes:
+      - ../docs/observability/otel-collector-docker.local.yaml:/etc/otelcol/config.yaml:ro
+    expose:
+      - "4318"
+      - "4317"
+      - "8889"
+      - "13133"
+    networks:
+      - pilox-network
+
+  prometheus:
+    profiles: ["observability"]
+    image: prom/prometheus:v2.53.3
+    restart: unless-stopped
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--web.enable-lifecycle"
+    volumes:
+      - ../docs/observability/prometheus-otel-local.yml:/etc/prometheus/prometheus.yml:ro
+      - ../docs/observability/prometheus-rules.hive.yml:/etc/prometheus/rules.hive.yml:ro
+    expose:
+      - "9090"
+    depends_on:
+      - otel-collector
+      - alertmanager
+    networks:
+      - pilox-network
+
+  alertmanager:
+    profiles: ["observability"]
+    image: prom/alertmanager:v0.27.0
+    restart: unless-stopped
+    command:
+      - "--config.file=/etc/alertmanager/alertmanager.yml"
+    volumes:
+      - ../docs/observability/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+    expose:
+      - "9093"
+    networks:
+      - pilox-network
+
+volumes:
+  postgres_data:
+  redis_data:
+  pilox_marketplace_node_state:
+  traefik_certs:
+  tempo_data:
+
+networks:
+  pilox-network:
+    driver: bridge

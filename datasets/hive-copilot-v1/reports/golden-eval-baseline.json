@@ -1,0 +1,238 @@
+{
+  "summary": {
+    "generated_at": "2026-03-25T22:13:52.282Z",
+    "golden_eval_lines": 24,
+    "parse_ok": 24,
+    "lines_with_assistant_hive_mention": 23,
+    "lines_with_valid_loose_canvas_json": 0,
+    "note": "This is a structural baseline, not model quality. Re-run after training to compare."
+  },
+  "per_line": [
+    {
+      "eval_id": "eval-001",
+      "assistant_hive_images_found": [
+        "hive/http-input:latest",
+        "hive/llm-agent:latest",
+        "hive/router-agent:latest",
+        "hive/api-caller:latest",
+        "hive/http-output:latest"
+      ],
+      "optional_json_blocks": 0,
+      "optional_json_valid_loose": false
+    },
+    {
+      "eval_id": "eval-002",
+      "assistant_hive_images_found": [
+        "hive/doc-loader:latest",
+        "hive/text-processor:latest",
+        "hive/llm-agent:latest",
+        "hive/api-caller:latest",
+        "hive/http-output:latest"
+      ],
+      "optional_json_blocks": 0,
+      "optional_json_valid_loose": false
+    },
+    {
+      "eval_id": "eval-003",
+      "assistant_hive_images_found": [
+        "hive/llm-agent:latest"
+      ],
+      "optional_json_blocks": 0,
+      "optional_json_valid_loose": false
+    },
+    {
+      "eval_id": "eval-004",
+      "assistant_hive_images_found": [
+        "hive/rag-agent:latest",
+        "hive/embedding-agent:latest"
+      ],
+      "optional_json_blocks": 0,
+      "optional_json_valid_loose": false
+    },
+    {
+      "eval_id": "eval-005",
+      "assistant_hive_images_found": [
+        "hive/iterator-agent:latest",
+        "hive/api-caller:latest",
+        "hive/code-runner:latest"
+      ],
+      "optional_json_blocks": 0,
+      "optional_json_valid_loose": false
+    },
+    {
+      "eval_id": "eval-006",
+      "assistant_hive_images_found": [
+        "hive/http-input:latest",
+        "hive/llm-agent:latest",
+        "hive/output-parser:latest",
+        "hive/http-output:latest"
+      ],
+      "optional_json_blocks": 0,
+      "optional_json_valid_loose": false
+    },
+    {
+      "eval_id": "eval-007",
+      "assistant_hive_images_found": [
+        "hive/tool-agent:latest",
+        "hive/llm-agent:latest"
+      ],
+      "optional_json_blocks": 0,
+      "optional_json_valid_loose": false
+    },
+    {
+      "eval_id": "eval-008",
+      "assistant_hive_images_found": [
+        "hive/memory-agent:latest",
+        "hive/rag-agent:latest"
+      ],
+      "optional_json_blocks": 0,
+      "optional_json_valid_loose": false
+    },
+    {
+      "eval_id": "eval-009",
+      "assistant_hive_images_found": [
+        "hive/text-processor:latest",
+        "hive/api-caller:latest",
+        "hive/llm-agent:latest"
+      ],
+      "optional_json_blocks": 0,
+      "optional_json_valid_loose": false
+    },
+    {
+      "eval_id": "eval-010",
+      "assistant_hive_images_found": [
+        "hive/tool-agent:latest",
+        "hive/generic-agent:latest"
+      ],
+      "optional_json_blocks": 0,
+      "optional_json_valid_loose": false
+    },
+    {
+      "eval_id": "eval-011",
+      "assistant_hive_images_found": [
+        "hive/iterator-agent:latest",
+        "hive/code-runner:latest"
+      ],
+      "optional_json_blocks": 0,
+      "optional_json_valid_loose": false
+    },
+    {
+      "eval_id": "eval-012",
+      "assistant_hive_images_found": [
+        "hive/llm-agent:latest"
+      ],
+      "optional_json_blocks": 0,
+      "optional_json_valid_loose": false
+    },
+    {
+      "eval_id": "eval-013",
+      "assistant_hive_images_found": [
+        "hive/api-caller:latest",
+        "hive/db-connector:latest",
+        "hive/llm-agent:latest",
+        "hive/http-input:latest"
+      ],
+      "optional_json_blocks": 0,
+      "optional_json_valid_loose": false
+    },
+    {
+      "eval_id": "eval-014",
+      "assistant_hive_images_found": [
+        "hive/redis-connector:latest",
+        "hive/code-runner:latest"
+      ],
+      "optional_json_blocks": 0,
+      "optional_json_valid_loose": false
+    },
+    {
+      "eval_id": "eval-015",
+      "assistant_hive_images_found": [
+        "hive/embedding-agent:latest",
+        "hive/rag-agent:latest"
+      ],
+      "optional_json_blocks": 0,
+      "optional_json_valid_loose": false
+    },
+    {
+      "eval_id": "eval-016",
+      "assistant_hive_images_found": [
+        "hive/router-agent:latest",
+        "hive/code-runner:latest"
+      ],
+      "optional_json_blocks": 0,
+      "optional_json_valid_loose": false
+    },
+    {
+      "eval_id": "eval-017",
+      "assistant_hive_images_found": [
+        "hive/rag-agent:latest"
+      ],
+      "optional_json_blocks": 0,
+      "optional_json_valid_loose": false
+    },
+    {
+      "eval_id": "eval-018",
+      "assistant_hive_images_found": [
+        "hive/doc-loader:latest",
+        "hive/text-processor:latest",
+        "hive/embedding-agent:latest",
+        "hive/rag-agent:latest"
+      ],
+      "optional_json_blocks": 0,
+      "optional_json_valid_loose": false
+    },
+    {
+      "eval_id": "eval-019",
+      "assistant_hive_images_found": [],
+      "optional_json_blocks": 0,
+      "optional_json_valid_loose": false
+    },
+    {
+      "eval_id": "eval-020",
+      "assistant_hive_images_found": [
+        "hive/api-caller:latest",
+        "hive/output-parser:latest"
+      ],
+      "optional_json_blocks": 0,
+      "optional_json_valid_loose": false
+    },
+    {
+      "eval_id": "eval-021",
+      "assistant_hive_images_found": [
+        "hive/llm-agent:latest",
+        "hive/output-parser:latest"
+      ],
+      "optional_json_blocks": 0,
+      "optional_json_valid_loose": false
+    },
+    {
+      "eval_id": "eval-022",
+      "assistant_hive_images_found": [
+        "hive/text-processor:latest",
+        "hive/api-caller:latest",
+        "hive/llm-agent:latest"
+      ],
+      "optional_json_blocks": 0,
+      "optional_json_valid_loose": false
+    },
+    {
+      "eval_id": "eval-023",
+      "assistant_hive_images_found": [
+        "hive/code-runner:latest",
+        "hive/redis-connector:latest",
+        "hive/http-output:latest"
+      ],
+      "optional_json_blocks": 0,
+      "optional_json_valid_loose": false
+    },
+    {
+      "eval_id": "eval-024",
+      "assistant_hive_images_found": [
+        "hive/tool-agent:latest",
+        "hive/llm-agent:latest"
+      ],
+      "optional_json_blocks": 0,
+      "optional_json_valid_loose": false
+    }
+  ]
+}

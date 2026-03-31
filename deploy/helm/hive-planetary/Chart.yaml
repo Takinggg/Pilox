@@ -1,0 +1,19 @@
+apiVersion: v2
+name: pilox-planetary
+description: Umbrella chart — optional bundle of P1 registry + P2 mesh gateway + P3 transport-bridge (NATS is external)
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+dependencies:
+  - name: pilox-registry
+    version: 0.1.0
+    repository: file://../pilox-registry
+    condition: registry.enabled
+  - name: pilox-mesh-gateway
+    version: 0.1.0
+    repository: file://../pilox-mesh-gateway
+    condition: gateway.enabled
+  - name: pilox-transport-bridge
+    version: 0.1.0
+    repository: file://../pilox-transport-bridge
+    condition: transportBridge.enabled

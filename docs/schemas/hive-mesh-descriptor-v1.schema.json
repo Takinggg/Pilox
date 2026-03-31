@@ -1,0 +1,130 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/hive/schemas/hive-mesh-descriptor-v1",
+  "title": "hive-mesh-descriptor-v1",
+  "description": "Public JSON from GET /.well-known/hive-mesh.json. See app/src/app/.well-known/hive-mesh.json/route.ts.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "meshV2",
+    "instanceOrigin",
+    "a2aEnabled",
+    "federation",
+    "publicMesh"
+  ],
+  "properties": {
+    "schema": {
+      "const": "hive-mesh-descriptor-v1"
+    },
+    "meshV2": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$",
+      "description": "Contract version; keep in sync with app/src/lib/mesh-version.ts"
+    },
+    "planetaryReferenceVersion": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$",
+      "description": "Optional: in-repo planetary stub reference semver (PLANETARY_MESH_REFERENCE_VERSION); distinct from meshV2"
+    },
+    "instanceOrigin": {
+      "type": "string",
+      "format": "uri"
+    },
+    "a2aEnabled": {
+      "type": "boolean"
+    },
+    "a2a": {
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["agentCardUrl", "jsonRpcUrl"],
+          "properties": {
+            "agentCardUrl": { "type": "string", "format": "uri" },
+            "jsonRpcUrl": { "type": "string", "format": "uri" },
+            "publicJsonRpcUrl": { "type": "string", "format": "uri" },
+            "publicTier": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "reputationCounters",
+                "reputationBlock",
+                "scopesEnabled"
+              ],
+              "properties": {
+                "reputationCounters": { "type": "boolean" },
+                "reputationBlock": { "type": "boolean" },
+                "scopesEnabled": { "type": "boolean" }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "federation": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "enabled",
+        "phase",
+        "transportActive",
+        "jwtAlg",
+        "localEd25519PublicKeyHex",
+        "directoryUrl",
+        "federationStatusUrl",
+        "wanMesh"
+      ],
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "phase": {
+          "type": "string",
+          "enum": ["2.0-config", "2.1-transport"]
+        },
+        "transportActive": { "type": "boolean" },
+        "jwtAlg": {
+          "oneOf": [
+            { "type": "null" },
+            { "type": "string", "enum": ["HS256", "Ed25519"] }
+          ]
+        },
+        "localEd25519PublicKeyHex": {
+          "oneOf": [
+            { "type": "null" },
+            {
+              "type": "string",
+              "pattern": "^[0-9a-fA-F]{64}$"
+            }
+          ]
+        },
+        "directoryUrl": {
+          "oneOf": [{ "type": "null" }, { "type": "string", "format": "uri" }]
+        },
+        "federationStatusUrl": { "type": "string", "format": "uri" },
+        "federatedJsonRpcUrl": { "type": "string", "format": "uri" },
+        "wanMesh": {
+          "oneOf": [{ "type": "null" }, { "type": "object" }]
+        }
+      }
+    },
+    "publicMesh": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["bootstrapMeshDescriptorUrls"],
+      "properties": {
+        "bootstrapMeshDescriptorUrls": {
+          "type": "array",
+          "items": { "type": "string", "format": "uri" },
+          "maxItems": 512
+        },
+        "dhtBootstrapHints": {
+          "type": "array",
+          "description": "Optional DHT / overlay bootstrap hints (multiaddr, dnsaddr, HTTPS rendezvous); operator-curated — not active routing",
+          "items": { "type": "string", "maxLength": 2048 },
+          "maxItems": 64
+        }
+      }
+    }
+  }
+}

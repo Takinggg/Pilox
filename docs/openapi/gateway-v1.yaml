@@ -1,0 +1,136 @@
+openapi: 3.1.0
+info:
+  title: Hive mesh WAN gateway (ingress) — draft
+  version: 0.1.0
+  description: |
+    Public ingress surface for P2. Terminates TLS and forwards JSON-RPC to Hive **internal** origin.
+    Trust boundary: clients never see internal `X-Hive-Gateway-*` secrets — see ../MESH_PLANETARY_P2_WAN_GATEWAY.md.
+  externalDocs:
+    url: ../MESH_PLANETARY_TRACE.md
+    description: Traceability index
+
+servers:
+  - url: https://mesh-edge.example
+    description: Internet-facing gateway (replace)
+
+paths:
+  /v1/metrics:
+    get:
+      operationId: gatewayPrometheusMetrics
+      summary: Prometheus-style HTTP counters
+      description: |
+        Text exposition. Optional Bearer when `GATEWAY_METRICS_AUTH_SECRET` is set.
+      responses:
+        "200":
+          description: Prometheus text format
+          content:
+            text/plain:
+              schema:
+                type: string
+        "401":
+          description: Metrics protected and missing or wrong Bearer
+
+  /v1/health:
+    get:
+      operationId: gatewayHealth
+      summary: Gateway liveness
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok, role, metricsPath]
+                properties:
+                  ok:
+                    type: boolean
+                    const: true
+                  role:
+                    type: string
+                    const: hive-mesh-gateway
+                  metricsPath:
+                    type: string
+                    description: Prometheus counters (`GET` returns `text/plain`)
+                    const: /v1/metrics
+                  metricsAuthRequired:
+                    type: boolean
+                  maxUrlBytes:
+                    type: integer
+                  requestTimeoutMs:
+                    type: integer
+                  rateLimitPerMin:
+                    type: integer
+                    description: 0 = disabled (GATEWAY_RATE_LIMIT_PER_MIN)
+                  rateLimitBackend:
+                    type: string
+                    enum: [memory, redis]
+                    description: redis when GATEWAY_RATE_LIMIT_REDIS_URL is set (shared limit across replicas); otherwise memory
+                  upstreamTimeoutMs:
+                    type: integer
+                    description: 0 = no client-side timeout (GATEWAY_UPSTREAM_TIMEOUT_MS)
+                  userAgentBlockPatterns:
+                    type: integer
+                    description: Count of GATEWAY_BLOCK_USER_AGENTS substrings (0 = disabled)
+                  tls:
+                    type: boolean
+                    description: True when GATEWAY_TLS_CERT_PATH and GATEWAY_TLS_KEY_PATH are set (HTTPS listener)
+                  mtlsRequired:
+                    type: boolean
+                    description: True when GATEWAY_MTLS_CA_PATH is set (mutual TLS with client certs)
+                  securityHeaders:
+                    type: boolean
+                    description: True when GATEWAY_SECURITY_HEADERS enables X-Content-Type-Options on JSON responses
+
+  /v1/a2a/jsonrpc:
+    post:
+      operationId: gatewayPublicJsonRpc
+      summary: Proxied public or authenticated JSON-RPC (policy on gateway + Hive)
+      description: |
+        Body is standard JSON-RPC 2.0. Gateway applies edge rate limits; Hive applies existing public / session / federation gates.
+        Propagate W3C Trace Context from client when present.
+        Toward Hive, implementations may add `X-Hive-Gateway-Auth: Bearer <secret>` when `MESH_GATEWAY_INBOUND_SECRET` is configured (see P2 ADR / Hive `.env.example`).
+        They may also set `X-Forwarded-For` so Hive’s public JSON-RPC rate limit sees the original client (`GATEWAY_UPSTREAM_FORWARD_FOR` in the reference stub).
+      parameters:
+        - $ref: "#/components/parameters/Traceparent"
+        - $ref: "#/components/parameters/Tracestate"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              description: JSON-RPC request object
+      responses:
+        "200":
+          description: JSON-RPC success or error object (HTTP 200 with JSON-RPC error inside is valid for some paths)
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          description: Unauthorized at edge or origin
+        "403":
+          description: Blocked by edge policy (e.g. GATEWAY_BLOCK_USER_AGENTS substring match on User-Agent)
+        "429":
+          description: Edge or origin rate limit
+        "503":
+          description: Origin unavailable
+        "504":
+          description: Upstream request exceeded GATEWAY_UPSTREAM_TIMEOUT_MS (reference stub)
+
+components:
+  parameters:
+    Traceparent:
+      name: traceparent
+      in: header
+      required: false
+      schema:
+        type: string
+      description: W3C Trace Context traceparent
+    Tracestate:
+      name: tracestate
+      in: header
+      required: false
+      schema:
+        type: string

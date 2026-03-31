@@ -1,0 +1,17 @@
+{
+  "description": "Snapshots HF ciblés <~1h total : outils (BFCL/APIBench), SQL (Spider), dialogue (SGD/MultiWOZ/Taskmaster), safety (LibrAI/BeaverTails), QA (Hotpot/WebShop). Exclus : xP3, Bactrian-X, Muennighoff/NI (très nombreux fichiers), Mind2Web/OpenHermes/FLORES/ALFWorld (lourds ou secondaires v1). ToolBench : optionnel séparé --repo Adorg/ToolBench.",
+  "local_root": "datasets/hive-copilot-v1/external/hf",
+  "repos": [
+    { "repo_id": "gorilla-llm/Berkeley-Function-Calling-Leaderboard", "note": "BFCL / tool calling" },
+    { "repo_id": "gorilla-llm/APIBench", "note": "APIBench" },
+    { "repo_id": "xlangai/spider", "note": "Text-to-SQL" },
+    { "repo_id": "google-research-datasets/schema_guided_dstc8", "note": "SGD" },
+    { "repo_id": "ConvLab/multiwoz21", "note": "MultiWOZ 2.1" },
+    { "repo_id": "google-research-datasets/taskmaster2", "note": "Taskmaster-2" },
+    { "repo_id": "google-research-datasets/taskmaster3", "note": "Taskmaster-3" },
+    { "repo_id": "LibrAI/do-not-answer", "note": "refus / safety" },
+    { "repo_id": "PKU-Alignment/BeaverTails", "note": "safety (HF_TOKEN si gated)" },
+    { "repo_id": "hotpotqa/hotpot_qa", "note": "QA multi-hop" },
+    { "repo_id": "quanwei0/webshop-minimal", "note": "WebShop compact" }
+  ]
+}

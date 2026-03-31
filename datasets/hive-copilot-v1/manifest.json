@@ -1,0 +1,112 @@
+{
+  "dataset_id": "hive-copilot-v1",
+  "status": "production_ready",
+  "purpose": "Fine-tune / instruct a Hive canvas copilot: runtime images, multi-node pipelines, agent_config hints, structured JSON (canvas-response), import semantics, refusals, multi-turn.",
+  "generated_from_repo": "Hive",
+  "embedded_catalogs": {
+    "flowise_node_catalog": {
+      "path": "app/src/lib/flowise-node-catalog.json",
+      "count_nodes": 246,
+      "note": "FlowiseAI node definitions; Hive palette sections via flowise-node-types.ts FLOWISE_CATEGORY_MAP"
+    },
+    "mastra_node_catalog": {
+      "path": "app/src/lib/mastra-node-catalog.json",
+      "count_nodes": 64,
+      "note": "Mastra workflow/agent primitives; Hive sections via MASTRA_CATEGORY_MAP"
+    },
+    "langflow_component_catalog": {
+      "path": "app/src/lib/langflow-component-catalog.json",
+      "count_components": 500,
+      "note": "Extracted from Langflow lfx component_index; regenerate via app/scripts/extract-langflow-components.mjs"
+    },
+    "langflow_category_hive_map": {
+      "path": "app/scripts/langflow-category-hive-map.json",
+      "note": "Extends Langflow category→hive/* mapping for dataset generation (reduces generic fallbacks)."
+    },
+    "n8n_workflow_templates": {
+      "path": "app/src/lib/n8n-workflow-templates.json",
+      "count_template_keys": 75,
+      "note": "Curated template metadata + graph hints for marketplace UI"
+    }
+  },
+  "hive_runtime_images_source": "canonical/hive-runtime-images.json",
+  "splits": {
+    "train_gold": "splits/train.jsonl",
+    "synthetic_train": "splits/synthetic-train.jsonl",
+    "synthetic_val": "splits/synthetic-val.jsonl",
+    "combined_train": "splits/combined-train.jsonl",
+    "public_sources_train": "splits/public-sources-train.jsonl",
+    "golden_eval": "splits/golden-eval.jsonl",
+    "note": "golden-eval is held-out QA; do not merge into training. combined-train = train_gold + synthetic_train + public_sources_train (npm run dataset:merge-train after convert-public)."
+  },
+  "approximate_counts": {
+    "train_gold_lines": 44,
+    "golden_eval_lines": 24,
+    "synthetic_total_rows_recommended": 8808,
+    "public_sources_train_lines_recommended": 3989,
+    "combined_train_lines_recommended": 11931
+  },
+  "generation": {
+    "emit_gold": "app/scripts/emit-hive-copilot-gold.mjs",
+    "synthetic": "app/scripts/generate-hive-copilot-dataset.mjs",
+    "merge": "app/scripts/merge-hive-copilot-train.mjs",
+    "recommended_cli": "cd app && npm run dataset:emit-gold && npm run dataset:hive-copilot:release && npm run dataset:merge-train",
+    "note": "Synthetic: --variants N (max 50) paraphrases; --pipeline-pairs adds ordered two-node examples per ecosystem. Same node/pair id stays in one split. Langflow categories merged with langflow-category-hive-map.json."
+  },
+  "schemas": {
+    "record": "schema/example-record.json",
+    "canvas_response": "schema/canvas-response.schema.json"
+  },
+  "external_hf_downloads": {
+    "config": "external/hf-repos.json",
+    "output_dir": "external/hf/",
+    "script": "app/scripts/download-public-datasets.py",
+    "npm": "npm run dataset:download-hf"
+  },
+  "training": {
+    "base_model_huggingface_id": "Qwen/Qwen2.5-7B-Instruct",
+    "train_script": "datasets/hive-copilot-v1/training/train_lora.py",
+    "modal_script": "datasets/hive-copilot-v1/training/modal_lora_train.py",
+    "npm": "npm run dataset:train-lora",
+    "eval_quality": "app/scripts/eval-copilot-quality.mjs",
+    "snapshot": "app/scripts/snapshot-hive-copilot-dataset.mjs",
+    "golden_inference": "datasets/hive-copilot-v1/training/run_golden_inference_lora.py",
+    "workflow": [
+      "1) Données: npm run dataset:full-pipeline (inclut eval-quality). Figer les splits: npm run dataset:snapshot (dossier snapshots/ gitignored)",
+      "2) Entraînement GPU local: npm run dataset:train-lora:production (ou :dev / :smoke). Cloud Modal: npm run dataset:train-lora:modal — récup pour image Docker: cd app && npm run dataset:fetch-modal-lora (volume hive-copilot-lora-output → app/models/hive-copilot-lora/)",
+      "3) Inférence golden: npm run dataset:golden-inference -- --adapter ../datasets/hive-copilot-v1/training/outputs/lora-production",
+      "4) Score modèle: npm run dataset:eval-quality -- --file ../datasets/hive-copilot-v1/reports/golden-inference-predictions.jsonl",
+      "5) Itérer: un levier (data ou hyperparams) puis reproduire 2–4"
+    ],
+    "note": "Un seul modèle de base pour le LoRA copilot. Prévoir GPU (~16GB+ VRAM bf16). --base-model dans train_lora.py pour essais exceptionnels.",
+    "model_selection": {
+      "class_size": "~7B instruct (classe 7–8B dense)",
+      "chosen": "Qwen/Qwen2.5-7B-Instruct",
+      "license": "Apache-2.0",
+      "rationale": [
+        "Carte modèle HF : améliorations explicites sur sorties structurées, dont JSON — aligné avec canvas-response / graphes agents.",
+        "Contexte long (jusqu’à 128k avec config YaRN) — utile si RAG + exports longs dans le prompt.",
+        "Multilingue (>29 langues dont FR) — cohérent avec prompts FR/EN du dataset.",
+        "Bon équilibre benchmarks généraux / code pour un copilot technique (noms hive/*, pipelines).",
+        "Pas de gated license type Llama : intégration produit plus simple que Meta-Llama."
+      ],
+      "ab_test_candidate": {
+        "id": "meta-llama/Llama-3.1-8B-Instruct",
+        "when": "Si la priorité absolue est le respect strict des consignes (IFEval) plutôt que le focus JSON annoncé par Qwen ; ~8B donc un peu plus de VRAM. Licence Llama + conditions de redistribution."
+      },
+      "not_chosen_examples": {
+        "mistralai/Ministral-8B-Instruct-2410": "Très bon candidat EU / multilingue ; moins de signal public ciblé « JSON canvas » que Qwen2.5 pour notre usage ; à tester si le français pur domine.",
+        "Qwen2.5-Coder-7B": "Mieux pour le code pur ; moins centré dialogue instruct général copilot."
+      },
+      "validation": "Décision finale = métrique sur splits/golden-eval.jsonl (+ prompts produit), pas seulement leaderboard généraliste."
+    }
+  },
+  "knowledge": {
+    "hive_runtime_blocks": "knowledge/hive-blocks-v1.json",
+    "rag_markdown_chunks": "knowledge/rag-chunks/*.md",
+    "copilot_grounding_prompt_fr": "knowledge/copilot-grounding-prompt-fr.txt",
+    "render_script": "app/scripts/render-hive-blocks-rag.mjs",
+    "block_count": 19,
+    "instruction": "Indexer rag-chunks/ (ou le JSON) dans le vector store du copilote ; préfixer le system prompt avec copilot-grounding-prompt-fr.txt. Régénérer les MD: npm run dataset:render-blocks-rag"
+  }
+}

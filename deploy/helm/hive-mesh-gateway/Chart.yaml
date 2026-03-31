@@ -1,0 +1,6 @@
+apiVersion: v2
+name: pilox-mesh-gateway
+description: Minimal Helm chart for the Pilox P2 mesh gateway stub (JSON-RPC edge proxy)
+type: application
+version: 0.1.0
+appVersion: "0.1.0"

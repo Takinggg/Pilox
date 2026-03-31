@@ -1,0 +1,40 @@
+openapi: 3.1.0
+info:
+  title: Hive public mesh descriptor (well-known)
+  version: 0.1.1
+  description: |
+    Documents `GET /.well-known/hive-mesh.json` (no auth, CORS `*`).
+    Response body validates against ../schemas/hive-mesh-descriptor-v1.schema.json.
+  externalDocs:
+    url: ../MESH_PLANETARY_TRACE.md
+    description: Traceability index
+
+servers:
+  - url: https://{instance}
+    variables:
+      instance:
+        default: hive.example
+        description: Operator hostname (must match AUTH_URL origin semantics)
+
+paths:
+  "/.well-known/hive-mesh.json":
+    get:
+      operationId: getHiveMeshDescriptor
+      summary: Public mesh / federation discovery descriptor
+      responses:
+        "200":
+          description: Descriptor (Cache-Control typically short public max-age)
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+            Access-Control-Allow-Origin:
+              schema:
+                type: string
+                example: "*"
+          content:
+            application/json:
+              schema:
+                $ref: "../schemas/hive-mesh-descriptor-v1.schema.json"
+        "503":
+          description: AUTH_URL misconfigured (error JSON, not descriptor schema)

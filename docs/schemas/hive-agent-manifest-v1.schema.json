@@ -1,0 +1,209 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/hive/schemas/hive-agent-manifest-v1",
+  "title": "Hive Agent Manifest v1",
+  "description": "Portable agent package format for Hive.",
+  "type": "object",
+  "required": ["schema", "version", "name", "runtime"],
+  "additionalProperties": false,
+  "properties": {
+    "schema": {
+      "const": "hive-agent-manifest-v1"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "description": "Semantic version of this agent package."
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 255
+    },
+    "description": {
+      "type": "string",
+      "maxLength": 4096
+    },
+    "author": {
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "maxLength": 255 },
+        "url": { "type": "string", "format": "uri" }
+      },
+      "required": ["name"],
+      "additionalProperties": false
+    },
+    "license": {
+      "type": "string",
+      "maxLength": 128,
+      "description": "SPDX license identifier."
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z0-9][a-z0-9._-]{0,63}$"
+      },
+      "maxItems": 32,
+      "uniqueItems": true
+    },
+    "icon": {
+      "type": "string",
+      "maxLength": 2048,
+      "description": "URL to icon image or base64 data: URI."
+    },
+    "runtime": {
+      "type": "object",
+      "required": ["image"],
+      "additionalProperties": false,
+      "properties": {
+        "image": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500,
+          "pattern": "^[a-zA-Z0-9._/:@-]+$"
+        },
+        "envVars": {
+          "type": "object",
+          "additionalProperties": { "type": "string" },
+          "maxProperties": 64
+        },
+        "envVarsRequired": {
+          "type": "array",
+          "items": { "type": "string", "maxLength": 128 },
+          "maxItems": 32,
+          "uniqueItems": true
+        },
+        "cpuLimit": {
+          "type": "string",
+          "pattern": "^\\d+(\\.\\d+)?$"
+        },
+        "memoryLimit": {
+          "type": "string",
+          "pattern": "^\\d+(m|g)$"
+        },
+        "gpuRequired": { "type": "boolean" },
+        "confidential": { "type": "boolean" },
+        "restartPolicy": {
+          "type": "string",
+          "enum": ["no", "always", "unless-stopped", "on-failure"]
+        }
+      }
+    },
+    "model": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "provider": {
+          "type": "string",
+          "maxLength": 64
+        },
+        "name": {
+          "type": "string",
+          "maxLength": 255
+        },
+        "systemPrompt": {
+          "type": "string",
+          "maxLength": 32768
+        },
+        "inferenceTier": {
+          "type": "string",
+          "enum": ["low", "medium", "high"]
+        },
+        "parameters": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      }
+    },
+    "a2a": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "protocolVersion": {
+          "type": "string",
+          "maxLength": 20
+        },
+        "skills": {
+          "type": "array",
+          "maxItems": 64,
+          "items": {
+            "type": "object",
+            "required": ["id", "name", "description", "tags"],
+            "additionalProperties": false,
+            "properties": {
+              "id": { "type": "string", "maxLength": 128 },
+              "name": { "type": "string", "maxLength": 255 },
+              "description": { "type": "string", "maxLength": 2048 },
+              "tags": {
+                "type": "array",
+                "items": { "type": "string" },
+                "maxItems": 16
+              },
+              "examples": {
+                "type": "array",
+                "items": { "type": "string" },
+                "maxItems": 8
+              },
+              "inputModes": {
+                "type": "array",
+                "items": { "type": "string" }
+              },
+              "outputModes": {
+                "type": "array",
+                "items": { "type": "string" }
+              }
+            }
+          }
+        },
+        "defaultInputModes": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "defaultOutputModes": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "capabilities": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "streaming": { "type": "boolean" },
+            "pushNotifications": { "type": "boolean" },
+            "stateTransitionHistory": { "type": "boolean" }
+          }
+        }
+      }
+    },
+    "mcpTools": {
+      "type": "array",
+      "maxItems": 32,
+      "items": {
+        "type": "object",
+        "required": ["name"],
+        "additionalProperties": false,
+        "properties": {
+          "name": { "type": "string", "maxLength": 128 },
+          "serverUrl": { "type": "string", "format": "uri" },
+          "description": { "type": "string", "maxLength": 512 }
+        }
+      }
+    },
+    "dependencies": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "agents": {
+          "type": "array",
+          "items": { "type": "string" },
+          "maxItems": 16
+        },
+        "services": {
+          "type": "array",
+          "items": { "type": "string" },
+          "maxItems": 16
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "name": "@pilox/mesh-transport-bridge-stub",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "P3 HTTP→bus stub: WanEnvelope + optional NATS (JetStream or core). See docs/openapi/transport-bridge-v1.yaml.",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "scripts": {
+    "start": "node src/server.mjs",
+    "subscribe": "node src/subscriber.mjs",
+    "check": "node --check src/bridge-bearer.mjs && node --check src/bridge-metrics.mjs && node --check src/nats-connect.mjs && node --check src/server.mjs && node --check src/subscriber.mjs && node --check src/ingest-retry.mjs && node --check scripts/p3-nats-smoke.mjs",
+    "smoke:p3-nats": "node scripts/p3-nats-smoke.mjs",
+    "smoke:p3-nats-core": "node scripts/p3-nats-smoke.mjs"
+  },
+  "dependencies": {
+    "ajv": "^8.18.0",
+    "ajv-formats": "^3.0.1",
+    "nats": "^2.29.3"
+  }
+}

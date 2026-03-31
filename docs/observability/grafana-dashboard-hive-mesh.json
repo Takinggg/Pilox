@@ -1,0 +1,341 @@
+{
+  "__inputs": [
+    {
+      "name": "DS_PROMETHEUS",
+      "label": "Prometheus-compatible",
+      "description": "Prometheus, Mimir, Cortex, etc.",
+      "type": "datasource",
+      "pluginId": "prometheus",
+      "pluginName": "Prometheus"
+    }
+  ],
+  "__elements": {},
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": { "type": "grafana", "uid": "-- Grafana --" },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "description": "Histogramme classique OTel→Prom : ajustez `rpc_histogram_basename` si besoin. Unités selon exposition backend.",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "axisBorderShow": false,
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "showPoints": "never"
+          },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 9, "w": 12, "x": 0, "y": 0 },
+      "id": 1,
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "editorMode": "code",
+          "expr": "histogram_quantile(0.99, sum(rate(${rpc_histogram_basename}_bucket[5m])) by (le))",
+          "legendFormat": "p99",
+          "range": true,
+          "refId": "A"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "editorMode": "code",
+          "expr": "histogram_quantile(0.50, sum(rate(${rpc_histogram_basename}_bucket[5m])) by (le))",
+          "legendFormat": "p50",
+          "range": true,
+          "refId": "B"
+        }
+      ],
+      "title": "A2A JSON-RPC — latence (P50 / P99)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "description": "Refus Redis sliding-window (`hive.mesh.rate_limit.blocked_total`). Label typique : mesh_rate_limit_tier.",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "axisBorderShow": false,
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "showPoints": "never"
+          },
+          "unit": "ops"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 9, "w": 12, "x": 12, "y": 0 },
+      "id": 2,
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "editorMode": "code",
+          "expr": "sum by (mesh_rate_limit_tier) (rate(${blocked_counter}[5m]))",
+          "legendFormat": "{{mesh_rate_limit_tier}}",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Rate limit — refus / s (par tier)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "description": "Remplissage estimé de la fenêtre Redis après chaque check (0–1). P95 élevé = proche de la limite.",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "axisBorderShow": false,
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "showPoints": "never"
+          },
+          "max": 1,
+          "min": 0,
+          "unit": "percentunit"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 9, "w": 24, "x": 0, "y": 9 },
+      "id": 3,
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "editorMode": "code",
+          "expr": "histogram_quantile(0.95, sum(rate(${utilization_histogram_basename}_bucket[5m])) by (le))",
+          "legendFormat": "p95 window utilization",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Saturation rate limit — P95 (window_utilization_ratio)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "description": "Histogramme **spanmetrics** (`hive_span_duration_milliseconds_*`) — dimensions `http.route` → label `http_route`. Nécessite le profil Docker `otel` + traffic Hive.",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "axisBorderShow": false,
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "showPoints": "never"
+          },
+          "unit": "ms"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 9, "w": 12, "x": 0, "y": 18 },
+      "id": 4,
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "editorMode": "code",
+          "expr": "histogram_quantile(0.99, sum by (le, http_route) (rate(${spanmetrics_duration_hist}_bucket[5m])))",
+          "legendFormat": "p99 {{http_route}}",
+          "range": true,
+          "refId": "A"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "editorMode": "code",
+          "expr": "histogram_quantile(0.50, sum by (le, http_route) (rate(${spanmetrics_duration_hist}_bucket[5m])))",
+          "legendFormat": "p50 {{http_route}}",
+          "range": true,
+          "refId": "B"
+        }
+      ],
+      "title": "HTTP API (spanmetrics) — latence P50 / P99 par route",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "description": "Débit de spans agrégé par `http_route` (connecteur spanmetrics, compteur `hive_span_calls_total`).",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "axisBorderShow": false,
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "showPoints": "never"
+          },
+          "unit": "ops"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 9, "w": 12, "x": 12, "y": 18 },
+      "id": 5,
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "editorMode": "code",
+          "expr": "sum by (http_route) (rate(${spanmetrics_calls_counter}[5m]))",
+          "legendFormat": "{{http_route}}",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "HTTP API (spanmetrics) — requêtes / s par route",
+      "type": "timeseries"
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 39,
+  "tags": ["hive", "mesh", "a2a", "opentelemetry", "http", "spanmetrics"],
+  "templating": {
+    "list": [
+      {
+        "current": {
+          "selected": true,
+          "text": "hive_mesh_a2a_rpc_duration_ms",
+          "value": "hive_mesh_a2a_rpc_duration_ms"
+        },
+        "hide": 0,
+        "label": "RPC histogram (sans _bucket)",
+        "name": "rpc_histogram_basename",
+        "options": [
+          {
+            "selected": true,
+            "text": "hive_mesh_a2a_rpc_duration_ms",
+            "value": "hive_mesh_a2a_rpc_duration_ms"
+          }
+        ],
+        "query": "hive_mesh_a2a_rpc_duration_ms",
+        "skipUrlSync": false,
+        "type": "constant"
+      },
+      {
+        "current": {
+          "selected": true,
+          "text": "hive_mesh_rate_limit_blocked_total",
+          "value": "hive_mesh_rate_limit_blocked_total"
+        },
+        "hide": 0,
+        "label": "Compteur blocked RL",
+        "name": "blocked_counter",
+        "options": [
+          {
+            "selected": true,
+            "text": "hive_mesh_rate_limit_blocked_total",
+            "value": "hive_mesh_rate_limit_blocked_total"
+          }
+        ],
+        "query": "hive_mesh_rate_limit_blocked_total",
+        "skipUrlSync": false,
+        "type": "constant"
+      },
+      {
+        "current": {
+          "selected": true,
+          "text": "hive_mesh_rate_limit_window_utilization_ratio",
+          "value": "hive_mesh_rate_limit_window_utilization_ratio"
+        },
+        "hide": 0,
+        "label": "Histogramme utilization (sans _bucket)",
+        "name": "utilization_histogram_basename",
+        "options": [
+          {
+            "selected": true,
+            "text": "hive_mesh_rate_limit_window_utilization_ratio",
+            "value": "hive_mesh_rate_limit_window_utilization_ratio"
+          }
+        ],
+        "query": "hive_mesh_rate_limit_window_utilization_ratio",
+        "skipUrlSync": false,
+        "type": "constant"
+      },
+      {
+        "current": {
+          "selected": true,
+          "text": "hive_span_duration_milliseconds",
+          "value": "hive_span_duration_milliseconds"
+        },
+        "hide": 0,
+        "label": "Spanmetrics durée (sans _bucket)",
+        "name": "spanmetrics_duration_hist",
+        "options": [
+          {
+            "selected": true,
+            "text": "hive_span_duration_milliseconds",
+            "value": "hive_span_duration_milliseconds"
+          }
+        ],
+        "query": "hive_span_duration_milliseconds",
+        "skipUrlSync": false,
+        "type": "constant"
+      },
+      {
+        "current": {
+          "selected": true,
+          "text": "hive_span_calls_total",
+          "value": "hive_span_calls_total"
+        },
+        "hide": 0,
+        "label": "Spanmetrics compteur appels",
+        "name": "spanmetrics_calls_counter",
+        "options": [
+          {
+            "selected": true,
+            "text": "hive_span_calls_total",
+            "value": "hive_span_calls_total"
+          }
+        ],
+        "query": "hive_span_calls_total",
+        "skipUrlSync": false,
+        "type": "constant"
+      }
+    ]
+  },
+  "time": { "from": "now-6h", "to": "now" },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "Hive — mesh A2A (OTel)",
+  "uid": "hive-mesh-otel",
+  "version": 2,
+  "weekStart": ""
+}

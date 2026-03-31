@@ -1,0 +1,24 @@
+{
+  "name": "@pilox/registry-stub",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "P1 registry read stub: Ajv validation vs docs/schemas/pilox-registry-record-v1. Optional Postgres + Ed25519 proof verify.",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "scripts": {
+    "start": "node src/server.mjs",
+    "export-records": "node scripts/export-records-to-dir.mjs",
+    "check": "node --check src/server.mjs && node --check src/registry-db.mjs && node --check src/registry-proof.mjs && node --check src/stable-stringify.mjs && node --check src/registry-upsert-logic.mjs && node --check src/registry-auth.mjs && node --check src/registry-sliding-window.mjs && node --check src/registry-record-etag.mjs && node --check src/registry-record-validity.mjs && node --check src/registry-record-normalize.mjs && node --check src/registry-publish-readiness.mjs && node --check src/registry-ssrf-fetch.mjs && node --check src/registry-publish-hmac.mjs && node --check src/registry-redis-write-rate.mjs && node --check src/registry-redis-minute-rate.mjs && node --check src/registry-peer-merge.mjs && node --check src/registry-catalog-proof.mjs && node --check src/registry-metrics.mjs && node --check src/registry-write-policy.mjs && node --check src/registry-pdp-http.mjs && node --check src/registry-tenant.mjs && node --check src/registry-vc-jwt.mjs && node --check src/registry-instance-auth.mjs",
+    "test": "node --test src/registry-proof.test.mjs src/registry-upsert-logic.test.mjs src/registry-sliding-window.test.mjs src/registry-record-etag.test.mjs src/registry-record-validity.test.mjs src/registry-record-normalize.test.mjs src/registry-publish-readiness.test.mjs src/registry-ssrf-fetch.test.mjs src/registry-publish-hmac.test.mjs src/registry-peer-merge.test.mjs src/registry-catalog-proof.test.mjs src/registry-write-policy.test.mjs src/registry-pdp-http.test.mjs src/registry-tenant.test.mjs src/registry-vc-jwt.test.mjs src/registry-instance-auth.test.mjs"
+  },
+  "dependencies": {
+    "@noble/curves": "^1.9.7",
+    "ajv": "^8.18.0",
+    "ajv-formats": "^3.0.1",
+    "ioredis": "^5.10.1",
+    "jose": "^5.10.0",
+    "postgres": "^3.4.8"
+  }
+}

@@ -1,0 +1,75 @@
+# Dependencies
+node_modules/
+
+# Environment files (secrets)
+.env
+.env.local
+.env.*.local
+
+# Next.js
+.next/
+out/
+
+# Build outputs
+dist/
+build/
+*.tsbuildinfo
+
+# Exception: commit prebuilt A2A SDK outputs (used by CI installs)
+!packages/a2a-sdk/dist/
+!packages/a2a-sdk/dist/**
+
+# OS files
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Debug logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# Test coverage
+coverage/
+
+# Keys and certificates
+*.pem
+*.key
+*.crt
+
+# Vercel
+.vercel
+
+# Next.js generated
+next-env.d.ts
+
+# Pencil design files (binary, managed separately)
+*.pen
+
+# Private docs (not for public repo)
+specs/
+design-references/
+
+# Hugging Face dataset snapshots (run app/scripts/download-public-datasets.py)
+datasets/hive-copilot-v1/external/hf/
+datasets/hive-copilot-v1/training/outputs/
+
+# App image LoRA weights (fetch before docker build: npm run dataset:fetch-modal-lora)
+app/models/hive-copilot-lora/**
+!app/models/hive-copilot-lora/README.md
+
+# Helm umbrella vendored deps (rebuild with `helm dependency build`)
+deploy/helm/hive-planetary/charts/*.tgz
+
+# Python / Playwright / local clones
+**/__pycache__/
+*.pyc
+app/test-results/
+langflow-clone/

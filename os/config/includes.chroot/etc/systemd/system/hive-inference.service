@@ -1,0 +1,40 @@
+[Unit]
+Description=Hive GPU Inference Service (Ollama)
+Documentation=https://ollama.com
+After=network-online.target
+Wants=network-online.target
+ConditionPathExists=/usr/local/bin/ollama
+
+[Service]
+Type=simple
+User=hive-inference
+Group=hive-inference
+ExecStart=/usr/local/bin/ollama serve
+Environment=OLLAMA_HOST=127.0.0.1:11434
+Environment=OLLAMA_MODELS=/var/lib/hive/models
+Restart=always
+RestartSec=5
+StartLimitBurst=5
+StartLimitIntervalSec=60
+
+# GPU access via group membership
+SupplementaryGroups=video render
+
+# Security hardening
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/hive/models /tmp
+PrivateTmp=true
+
+# Resource management
+LimitNOFILE=65536
+LimitMEMLOCK=infinity
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=hive-inference
+
+[Install]
+WantedBy=multi-user.target

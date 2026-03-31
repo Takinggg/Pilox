@@ -1,0 +1,468 @@
+# Hive High Availability Stack
+# Production-ready multi-replica deployment with:
+# - PostgreSQL with streaming replication (1 primary + 2 replicas)
+# - Redis Sentinel for automatic failover (1 primary + 2 replicas + 3 sentinels)
+# - Hive app with 3 replicas behind Traefik load balancer
+# - Automated backups with S3 upload support
+
+version: "3.8"
+
+services:
+  # ─────────────────────────────────────────────────────────────────────────────
+  # PostgreSQL Primary
+  # ─────────────────────────────────────────────────────────────────────────────
+  postgres_primary:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      POSTGRES_DB: pilox
+      POSTGRES_HOST_AUTH_METHOD: md5
+    command: >
+      postgres
+      -c wal_level=replica
+      -c max_wal_senders=10
+      -c max_wal_size=1GB
+      -c min_wal_size=80MB
+      -c hot_standby=on
+      -c wal_keep_size=2GB
+      -c max_replication_slots=10
+      -c synchronous_commit=on
+      -c synchronous_standby_names='pg_replica%'
+      -c archive_mode=on
+      -c archive_command='test ! -f /wal_archive/%f && cp %p /wal_archive/%f'
+      -c logging_collector=on
+      -c log_directory=log
+      -c log_rotation_age=1d
+      -c log_rotation_size=100MB
+    volumes:
+      - postgres_primary:/var/lib/postgresql/data
+      - ./wal_archive:/wal_archive
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d hive"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - pilox-network
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 4G
+        reservations:
+          cpus: '1'
+          memory: 2G
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # PostgreSQL Replica 1
+  # ─────────────────────────────────────────────────────────────────────────────
+  postgres_replica_1:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      POSTGRES_DB: pilox
+    command: >
+      postgres
+      -c hot_standby=on
+      -c primary_conninfo=host=postgres_primary port=5432 user=postgres password=${POSTGRES_PASSWORD} application_name=pg_replica_1
+      -c synchronous_commit=remote_apply
+      -c logging_collector=on
+      -c log_directory=log
+    depends_on:
+      postgres_primary:
+        condition: service_healthy
+    volumes:
+      - postgres_replica_1:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d hive"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - pilox-network
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 4G
+        reservations:
+          cpus: '1'
+          memory: 2G
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # PostgreSQL Replica 2
+  # ─────────────────────────────────────────────────────────────────────────────
+  postgres_replica_2:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      POSTGRES_DB: pilox
+    command: >
+      postgres
+      -c hot_standby=on
+      -c primary_conninfo=host=postgres_primary port=5432 user=postgres password=${POSTGRES_PASSWORD} application_name=pg_replica_2
+      -c synchronous_commit=remote_apply
+      -c logging_collector=on
+      -c log_directory=log
+    depends_on:
+      postgres_primary:
+        condition: service_healthy
+    volumes:
+      - postgres_replica_2:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d hive"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - pilox-network
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 4G
+        reservations:
+          cpus: '1'
+          memory: 2G
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Redis Primary
+  # ─────────────────────────────────────────────────────────────────────────────
+  redis_primary:
+    image: redis:7-alpine
+    command: >
+      redis-server
+      --requirepass ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
+      --appendonly yes
+      --appendfsync everysec
+      --aof-rewrite-incremental-fsync yes
+      --rdb-save-incremental-fsync yes
+      --maxmemory 512mb
+      --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_primary:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - pilox-network
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Redis Replica 1
+  # ─────────────────────────────────────────────────────────────────────────────
+  redis_replica_1:
+    image: redis:7-alpine
+    command: >
+      redis-server
+      --requirepass ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
+      --replicaof redis_primary 6379
+      --appendonly yes
+      --appendfsync everysec
+    volumes:
+      - redis_replica_1:/data
+    depends_on:
+      redis_primary:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - pilox-network
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Redis Replica 2
+  # ─────────────────────────────────────────────────────────────────────────────
+  redis_replica_2:
+    image: redis:7-alpine
+    command: >
+      redis-server
+      --requirepass ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
+      --replicaof redis_primary 6379
+      --appendonly yes
+      --appendfsync everysec
+    volumes:
+      - redis_replica_2:/data
+    depends_on:
+      redis_primary:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - pilox-network
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Redis Sentinel 1
+  # ─────────────────────────────────────────────────────────────────────────────
+  redis_sentinel_1:
+    image: redis:7-alpine
+    volumes:
+      - ./sentinel.conf:/usr/local/etc/redis/sentinel.conf:ro
+      - sentinel_data:/data
+    command: redis-sentinel /usr/local/etc/redis/sentinel.conf
+    depends_on:
+      - redis_primary
+      - redis_replica_1
+      - redis_replica_2
+    networks:
+      - pilox-network
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Redis Sentinel 2
+  # ─────────────────────────────────────────────────────────────────────────────
+  redis_sentinel_2:
+    image: redis:7-alpine
+    volumes:
+      - ./sentinel.conf:/usr/local/etc/redis/sentinel.conf:ro
+      - sentinel_data:/data
+    command: redis-sentinel /usr/local/etc/redis/sentinel.conf
+    depends_on:
+      - redis_primary
+      - redis_replica_1
+      - redis_replica_2
+    networks:
+      - pilox-network
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Redis Sentinel 3
+  # ─────────────────────────────────────────────────────────────────────────────
+  redis_sentinel_3:
+    image: redis:7-alpine
+    volumes:
+      - ./sentinel.conf:/usr/local/etc/redis/sentinel.conf:ro
+      - sentinel_data:/data
+    command: redis-sentinel /usr/local/etc/redis/sentinel.conf
+    depends_on:
+      - redis_primary
+      - redis_replica_1
+      - redis_replica_2
+    networks:
+      - pilox-network
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Traefik Load Balancer
+  # ─────────────────────────────────────────────────────────────────────────────
+  traefik:
+    image: traefik:v3.0
+    command:
+      - --api.dashboard=true
+      - --api.insecure=true
+      - --providers.docker=true
+      - --providers.docker.exposedbydefault=false
+      - --providers.docker.network=pilox-network
+      - --entrypoints.web.address=:80
+      - --entrypoints.websecure.address=:443
+      - --entrypoints.metrics.address=:8082
+      - --certificatesresolvers.letsencrypt.acme.email=${ACME_EMAIL:?ACME_EMAIL is required}
+      - --certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json
+      - --certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=web
+      - --log.level=INFO
+      - --log.format=json
+      - --accesslog=true
+      - --metrics.prometheus=true
+    ports:
+      - "80:80"
+      - "443:443"
+      - "8080:8080"
+      - "8082:8082"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - letsencrypt:/letsencrypt
+    networks:
+      - pilox-network
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Hive Application (3 replicas)
+  # ─────────────────────────────────────────────────────────────────────────────
+  hive_app:
+    image: ${PILOX_IMAGE:-hive/app:latest}
+    environment:
+      DATABASE_URL: postgres://postgres:${POSTGRES_PASSWORD}@postgres_primary:5432/hive
+      DATABASE_URL_REPLICA: postgres://postgres:${POSTGRES_PASSWORD}@postgres_replica_1:5432/hive
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis_primary:6379
+      REDIS_SENTINEL_URL: redis://:${REDIS_PASSWORD}@redis_sentinel_1:26379
+      REDIS_SENTINEL_SERVICE: pilox-redis
+      AUTH_SECRET: ${AUTH_SECRET:?AUTH_SECRET is required}
+      AUTH_URL: https://${PILOX_DOMAIN:?PILOX_DOMAIN is required}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:?ENCRYPTION_KEY is required}
+      NODE_ENV: production
+      PILOX_CLIENT_IP_SOURCE: ${PILOX_CLIENT_IP_SOURCE:-xff_first}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - agent_data:/var/lib/hive/agents
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.hive.rule=Host(`${PILOX_DOMAIN}`)"
+      - "traefik.http.routers.hive.tls=true"
+      - "traefik.http.routers.hive.tls.certresolver=letsencrypt"
+      - "traefik.http.services.hive.loadbalancer.server.port=3000"
+      - "traefik.http.services.hive.loadbalancer.sticky.cookie=true"
+      - "traefik.http.services.hive.loadbalancer.sticky.cookie.name=pilox_session"
+      - "traefik.http.services.hive.loadbalancer.sticky.cookie.httponly=true"
+      - "traefik.http.services.hive.loadbalancer.sticky.cookie.samesite=lax"
+      - "traefik.http.middlewares.hive-compress.compress=true"
+      - "traefik.http.routers.hive.middlewares=hive-compress"
+    networks:
+      - pilox-network
+    depends_on:
+      postgres_primary:
+        condition: service_healthy
+      redis_primary:
+        condition: service_healthy
+    restart: unless-stopped
+    deploy:
+      replicas: 3
+      resources:
+        limits:
+          cpus: '2'
+          memory: 4G
+        reservations:
+          cpus: '1'
+          memory: 2G
+      update_config:
+        parallelism: 1
+        delay: 10s
+        order: start-first
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Backup Service
+  # ─────────────────────────────────────────────────────────────────────────────
+  backup:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
+      AWS_S3_BUCKET: ${AWS_S3_BUCKET:-}
+      BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-30}
+    volumes:
+      - ./backup.sh:/backup.sh:ro
+      - ./restore.sh:/restore.sh:ro
+      - backups:/backups
+      - postgres_primary:/var/lib/postgresql/data:ro
+      - ./wal_archive:/wal_archive:ro
+    networks:
+      - pilox-network
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Prometheus Metrics
+  # ─────────────────────────────────────────────────────────────────────────────
+  prometheus:
+    image: prom/prometheus:latest
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--web.enable-lifecycle'
+    ports:
+      - "9090:9090"
+    networks:
+      - pilox-network
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 2G
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Volumes
+# ─────────────────────────────────────────────────────────────────────────────
+volumes:
+  postgres_primary:
+  postgres_replica_1:
+  postgres_replica_2:
+  redis_primary:
+  redis_replica_1:
+  redis_replica_2:
+  sentinel_data:
+  letsencrypt:
+  backups:
+  agent_data:
+  prometheus_data:
+  wal_archive:
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Networks
+# ─────────────────────────────────────────────────────────────────────────────
+networks:
+  pilox-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.28.0.0/16

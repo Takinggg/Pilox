@@ -1,0 +1,12 @@
+# Enable/disable subcharts (Helm `condition:` in Chart.yaml).
+registry:
+  enabled: true
+gateway:
+  enabled: true
+transportBridge:
+  enabled: true
+
+# Values passed to subcharts (keys = chart names from each Chart.yaml).
+pilox-registry: {}
+pilox-mesh-gateway: {}
+pilox-transport-bridge: {}

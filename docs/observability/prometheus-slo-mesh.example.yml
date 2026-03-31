@@ -1,0 +1,57 @@
+# Example Prometheus recording rules for mesh stub SLO-style dashboards.
+# NOT loaded by default — copy fragments into your Prometheus or Mimir config.
+#
+# Metrics assume scrapes of:
+#   - P2 gateway: hive_gateway_http_requests_total{method,path,code}
+#   - P1 registry: hive_registry_http_requests_total{method,path,code}
+#
+# Multi-region: add label matchers e.g. {cluster="eu-west"} to each expr in prod.
+#
+# Kubernetes: add consistent labels on scrape targets — e.g. Helm
+#   deploy/helm/hive-mesh-gateway/values.yaml → podLabels: { cluster: eu-west-1, region: eu }
+# then relabel in Prometheus or use the `hive_mesh_slo_by_cluster` group below (requires `cluster` on scraped series).
+
+groups:
+  - name: hive_mesh_slo_recordings
+    interval: 30s
+    rules:
+      # --- Gateway: availability proxy (non-5xx / all) ---
+      - record: hive:gateway:http_success_ratio:5m
+        expr: |
+          sum(rate(hive_gateway_http_requests_total{code!~"5.."}[5m]))
+          /
+          clamp_min(sum(rate(hive_gateway_http_requests_total[5m])), 1e-9)
+
+      - record: hive:gateway:http_5xx:rate5m
+        expr: sum(rate(hive_gateway_http_requests_total{code=~"5.."}[5m]))
+
+      # --- Registry: same pattern ---
+      - record: hive:registry:http_success_ratio:5m
+        expr: |
+          sum(rate(hive_registry_http_requests_total{code!~"5.."}[5m]))
+          /
+          clamp_min(sum(rate(hive_registry_http_requests_total[5m])), 1e-9)
+
+      - record: hive:registry:http_5xx:rate5m
+        expr: sum(rate(hive_registry_http_requests_total{code=~"5.."}[5m]))
+
+      # Optional: burn-rate style (tune windows for your error budget policy)
+      # - record: hive:gateway:http_success_ratio:1h
+      #   expr: |
+      #     sum(rate(hive_gateway_http_requests_total{code!~"5.."}[1h]))
+      #     / clamp_min(sum(rate(hive_gateway_http_requests_total[1h])), 1e-9)
+
+  # Per-cluster recordings (omit this group if your scrapes have no `cluster` label yet)
+  - name: hive_mesh_slo_by_cluster
+    interval: 30s
+    rules:
+      - record: hive:gateway:http_success_ratio:5m_by_cluster
+        expr: |
+          sum by (cluster) (rate(hive_gateway_http_requests_total{code!~"5.."}[5m]))
+          /
+          clamp_min(sum by (cluster) (rate(hive_gateway_http_requests_total[5m])), 1e-9)
+      - record: hive:registry:http_success_ratio:5m_by_cluster
+        expr: |
+          sum by (cluster) (rate(hive_registry_http_requests_total{code!~"5.."}[5m]))
+          /
+          clamp_min(sum by (cluster) (rate(hive_registry_http_requests_total[5m])), 1e-9)

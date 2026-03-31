@@ -1,0 +1,451 @@
+openapi: 3.1.0
+info:
+  title: Hive global agent registry (read/write draft)
+  version: 0.2.0
+  description: |
+    Public read surface + optional authenticated write (`POST /v1/records` when `REGISTRY_WRITE_SECRET` is set on the stub).
+    Machine artifacts: this file + ../schemas/hive-registry-record-v1.schema.json.
+    Human spec: ../MESH_PLANETARY_P1_GLOBAL_DIRECTORY.md.
+  externalDocs:
+    url: ../MESH_PLANETARY_TRACE.md
+    description: Traceability index (docs ↔ code)
+
+servers:
+  - url: https://registry.example
+    description: Replace with your registrar origin
+
+paths:
+  /v1/records/validate:
+    post:
+      operationId: validateRecordWrite
+      summary: Dry-run publish readiness (same auth as POST /v1/records)
+      description: |
+        Does **not** store. Normalizes aliases (`hiveBuyerInputs` → `buyerInputs`, etc.), validates JSON Schema,
+        then runs publish-readiness rules (`buyerInputs` shape, optional `publishAttestation`, optional Agent Card fetch).
+        Response always **200** with `wouldAcceptWrite` indicating whether `POST /v1/records` would succeed under current
+        `REGISTRY_PUBLISH_READINESS` / `REGISTRY_PUBLISH_REQUIRE_ATTESTATION` / `REGISTRY_PUBLISH_FETCH_AGENT_CARD` settings.
+        Optional hardening: `REGISTRY_PUBLISH_ATTESTATION_HMAC_SECRET`, `REGISTRY_PUBLISH_FETCH_HOST_ALLOWLIST`,
+        `REGISTRY_PUBLISH_FETCH_MAX_REDIRECTS`, `REGISTRY_PUBLISH_FETCH_CACHE_TTL_MS`, `REGISTRY_PUBLISH_FETCH_CACHE_MAX`.
+      security:
+        - RegistryWriteBearer: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/HiveRegistryRecordV1"
+      responses:
+        "200":
+          description: Validation report
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [wouldAcceptWrite, schemaValid, publishReadinessMode]
+                properties:
+                  wouldAcceptWrite:
+                    type: boolean
+                  schemaValid:
+                    type: boolean
+                  schemaErrors:
+                    type: array
+                    items:
+                      type: object
+                  readiness:
+                    type: object
+                    nullable: true
+                  publishReadinessMode:
+                    type: string
+                    enum: [off, warn, enforce]
+                  publishRequireAttestation:
+                    type: boolean
+                  publishFetchAgentCard:
+                    type: boolean
+        "400":
+          description: Invalid JSON
+        "401":
+          description: Missing or wrong Bearer
+        "403":
+          description: Write disabled
+        "413":
+          description: Body too large
+        "429":
+          description: Rate limited
+
+  /v1/metrics:
+    get:
+      operationId: registryPrometheusMetrics
+      summary: Prometheus-style HTTP counters (SLO scraping)
+      description: |
+        Text exposition (`text/plain`). When `REGISTRY_METRICS_AUTH_SECRET` is set, requires `Authorization: Bearer` (timing-safe).
+      responses:
+        "200":
+          description: Prometheus text format
+          content:
+            text/plain:
+              schema:
+                type: string
+        "401":
+          description: Metrics protected (`REGISTRY_METRICS_AUTH_SECRET`) and missing or wrong Bearer
+
+  /v1/health:
+    get:
+      operationId: registryHealth
+      summary: Liveness for probes
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok]
+                properties:
+                  ok:
+                    type: boolean
+                    const: true
+                  recordSchema:
+                    type: string
+                    description: JSON Schema $id for GET /v1/records/{handle} responses (reference stub)
+                  persistence:
+                    type: string
+                    enum: [memory, postgres]
+                  verifyEd25519Proof:
+                    type: boolean
+                    description: True when REGISTRY_VERIFY_ED25519_PROOF is enabled
+                  writeEnabled:
+                    type: boolean
+                    description: True when REGISTRY_WRITE_SECRET is configured (POST allowed)
+                  rejectStaleUpdates:
+                    type: boolean
+                    description: True when REGISTRY_REJECT_STALE_UPDATES rejects older updatedAt on write
+                  writeRateLimitPerMin:
+                    type: integer
+                    description: 0 = unlimited (REGISTRY_WRITE_RATE_LIMIT_PER_MIN)
+                  auditJson:
+                    type: boolean
+                  enforceIfMatch:
+                    type: boolean
+                  rateLimitTrustXff:
+                    type: boolean
+                    description: Use first X-Forwarded-For hop for read/write rate limit keys
+                  readRateLimitPerMin:
+                    type: integer
+                  readRateLimitBackend:
+                    type: string
+                    enum: [off, memory, redis]
+                  catalogAuthEnabled:
+                    type: boolean
+                  revokeSecretConfigured:
+                    type: boolean
+                  syncVerifyEd25519Proof:
+                    type: boolean
+                  securityHeaders:
+                    type: boolean
+                  writeRateLimitBackend:
+                    type: string
+                    enum: [off, memory, redis]
+                  enforceValidUntil:
+                    type: boolean
+                  rejectExpiredWrites:
+                    type: boolean
+                  validUntilSkewSec:
+                    type: integer
+                  catalogSigningEnabled:
+                    type: boolean
+                    description: True when REGISTRY_CATALOG_SIGNING_KEY_HEX signs GET /v1/records listings
+                  syncVerifyCatalog:
+                    type: boolean
+                    description: True when REGISTRY_SYNC_VERIFY_CATALOG requires a valid catalogProof from peers
+                  syncCatalogPubkeyPin:
+                    type: boolean
+                    description: True when REGISTRY_SYNC_CATALOG_PUBKEY_HEX pins the catalog signer
+                  metricsAuthRequired:
+                    type: boolean
+                  maxUrlBytes:
+                    type: integer
+                  requestTimeoutMs:
+                    type: integer
+                    description: 0 = Node default socket timeout
+                  postPolicyHandlePrefixes:
+                    type: integer
+                    description: Count of REGISTRY_POST_HANDLE_PREFIX_ALLOWLIST entries (0 = off)
+                  postPolicyAgentCardHosts:
+                    type: integer
+                    description: Count of REGISTRY_POST_AGENT_CARD_HOST_ALLOWLIST entries (0 = off)
+                  externalPdpConfigured:
+                    type: boolean
+                    description: True when REGISTRY_PDP_HTTP_URL is set
+                  externalPdpFailOpen:
+                    type: boolean
+                    description: True when REGISTRY_PDP_FAIL_OPEN allows writes if PDP is unreachable
+                  dhtBootstrapHints:
+                    type: array
+                    items:
+                      type: string
+                    description: From REGISTRY_DHT_BOOTSTRAP_HINTS (or REGISTRY_DHT_BOOTSTRAP_URLS); operator hints only
+                  multiTenant:
+                    type: boolean
+                  tenantHeader:
+                    type: string
+                    description: Header clients must send when multiTenant is true
+                  vcJwtRequired:
+                    type: boolean
+                  vcJwksConfigured:
+                    type: boolean
+
+  /v1/records:
+    post:
+      operationId: putRecord
+      summary: Create or replace a registry record (operator)
+      description: |
+        Requires `Authorization: Bearer <REGISTRY_WRITE_SECRET>`. Disabled with **403** when the secret is not set.
+        Optional **409** `stale_updatedAt` when `REGISTRY_REJECT_STALE_UPDATES=1` and body `updatedAt` is older than stored.
+        Optional **412** when `REGISTRY_ENFORCE_IF_MATCH=1` and `If-Match` does not match the stored weak ETag (updates only).
+        Rate limit **429** when `REGISTRY_WRITE_RATE_LIMIT_PER_MIN` is exceeded (Redis if `REGISTRY_WRITE_RATE_LIMIT_REDIS_URL`, else in-memory per replica).
+        Optional **400** `record_body_expired` when `REGISTRY_REJECT_EXPIRED_WRITES=1` and `validUntil` is in the past.
+        Optional **403** `policy_denied` when `REGISTRY_POST_HANDLE_PREFIX_ALLOWLIST` or `REGISTRY_POST_AGENT_CARD_HOST_ALLOWLIST` rejects the body.
+        Optional **403** `pdp_denied` when `REGISTRY_PDP_HTTP_URL` is set and the external PDP JSON denies the write (or transport error when `REGISTRY_PDP_FAIL_OPEN` is not set).
+        Optional **400** `tenant_required` when `REGISTRY_MULTI_TENANT=1` and the tenant header is missing or invalid.
+        Optional **403** `vc_jwt_rejected` when `REGISTRY_VC_REQUIRED=1` and `REGISTRY_VC_JWKS_URL` is set — header `X-Hive-Vc-Jwt` (override via `REGISTRY_VC_JWT_HEADER`) must verify (JWT must include a `vc` claim; optional `sub` match to `controllerDid`).
+        Optional **422** `publish_readiness_failed` when `REGISTRY_PUBLISH_READINESS=enforce` and buyer-configuration / attestation checks fail (see `POST /v1/records/validate`).
+      security:
+        - RegistryWriteBearer: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/HiveRegistryRecordV1"
+      responses:
+        "201":
+          description: Stored
+          headers:
+            ETag:
+              schema:
+                type: string
+              description: Weak ETag of stored record (for subsequent If-Match)
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok, handle, etag]
+                properties:
+                  ok:
+                    const: true
+                  handle:
+                    type: string
+                  etag:
+                    type: string
+        "400":
+          description: Invalid JSON or schema or expired validUntil (REGISTRY_REJECT_EXPIRED_WRITES)
+        "401":
+          description: Missing or wrong Bearer token
+        "403":
+          description: Write API disabled (no REGISTRY_WRITE_SECRET) or POST policy denied (allowlists) or external PDP denied
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    enum: [write_disabled, policy_denied, pdp_denied]
+                  detail:
+                    type: string
+                    description: e.g. handle_prefix_denied, agent_card_host_denied, pdp reason token
+        "409":
+          description: Proof verification failed or stale updatedAt
+        "412":
+          description: If-Match precondition failed (REGISTRY_ENFORCE_IF_MATCH)
+        "413":
+          description: Body too large
+        "422":
+          description: Publish readiness enforcement failed (REGISTRY_PUBLISH_READINESS=enforce)
+        "429":
+          description: Write rate limit exceeded
+    get:
+      operationId: listRecordHandles
+      summary: List known handles (P4 federated sync / catalog)
+      description: |
+        Returns handles currently in the stub store. Used by `REGISTRY_SYNC_PEER_BASES` pull sync
+        between registry instances (see `docs/MESH_PLANETARY_P4_FEDERATED_SYNC.md`).
+        When `REGISTRY_CATALOG_SECRET` is set, requires `Authorization: Bearer` with that secret (**401** otherwise).
+        Optional **429** when `REGISTRY_READ_RATE_LIMIT_PER_MIN` is exceeded (Redis via `REGISTRY_READ_RATE_LIMIT_REDIS_URL` or `REGISTRY_WRITE_RATE_LIMIT_REDIS_URL`, else in-memory).
+        When `REGISTRY_CATALOG_SIGNING_KEY_HEX` is set (64 hex = 32-byte Ed25519 seed), response includes **`catalogProof`** (Ed25519 over sorted `handles` + `issuedAt`).
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [handles]
+                properties:
+                  handles:
+                    type: array
+                    items:
+                      type: string
+                  catalogProof:
+                    type: object
+                    description: Present when catalog signing is enabled on the server
+                    required: [type, issuedAt, signingKid, sigHex, publicKeyHex]
+                    properties:
+                      type:
+                        const: hive-registry-catalog-ed25519-v1
+                      issuedAt:
+                        type: string
+                        format: date-time
+                      signingKid:
+                        type: string
+                      sigHex:
+                        type: string
+                      publicKeyHex:
+                        type: string
+        "500":
+          description: Catalog signing misconfigured or signing error (`catalog_sign_failed`)
+        "401":
+          description: Catalog protected (`REGISTRY_CATALOG_SECRET`) and missing or wrong Bearer
+        "429":
+          description: Read rate limit exceeded
+
+  /v1/records/{handle}:
+    get:
+      operationId: getRecordByHandle
+      summary: Canonical registry record for a stable handle
+      parameters:
+        - name: handle
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 8
+            maxLength: 512
+          description: URL-encoded handle (URN or opaque id)
+      description: Optional **429** when `REGISTRY_READ_RATE_LIMIT_PER_MIN` is exceeded.
+      responses:
+        "200":
+          description: Record found
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+            ETag:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HiveRegistryRecordV1"
+        "304":
+          description: Not modified (If-None-Match matched weak ETag)
+          headers:
+            ETag:
+              schema:
+                type: string
+        "429":
+          description: Read rate limit exceeded
+        "410":
+          description: Record soft-expired (`validUntil` in the past when REGISTRY_ENFORCE_VALID_UNTIL=1)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    const: record_expired
+                  validUntil:
+                    type: string
+        "404":
+          description: Unknown handle
+        "409":
+          description: Ed25519 proof verification failed (when REGISTRY_VERIFY_ED25519_PROOF is enabled on the server)
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [error, reason]
+                properties:
+                  error:
+                    const: proof_verification_failed
+                  reason:
+                    type: string
+    delete:
+      operationId: deleteRecordByHandle
+      summary: Remove a record (operator revocation)
+      description: |
+        Deletes the handle from the stub store and Postgres when configured.
+        Bearer: if `REGISTRY_REVOKE_SECRET` is set, must match that; otherwise must match `REGISTRY_WRITE_SECRET` (requires `REGISTRY_WRITE_SECRET` to be configured).
+        Subject to the same write rate limit as `POST /v1/records`.
+      security:
+        - RegistryRevokeBearer: []
+      parameters:
+        - name: handle
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 8
+            maxLength: 512
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok, deleted]
+                properties:
+                  ok:
+                    const: true
+                  deleted:
+                    type: string
+        "401":
+          description: Missing or wrong Bearer token
+        "403":
+          description: Neither revoke nor write secret configured (`revoke_disabled`)
+        "404":
+          description: Unknown handle
+        "429":
+          description: Write rate limit exceeded
+
+  /v1/resolve:
+    get:
+      operationId: resolveByAgentCardUrl
+      summary: Reverse lookup by Agent Card URL (optional; rate-limit heavily)
+      description: Optional **429** when `REGISTRY_READ_RATE_LIMIT_PER_MIN` is exceeded.
+      parameters:
+        - name: agentCardUrl
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uri
+      responses:
+        "200":
+          description: Zero or more handles (enumeration risk)
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [handles]
+                properties:
+                  handles:
+                    type: array
+                    items:
+                      type: string
+        "429":
+          description: Too many requests
+
+components:
+  securitySchemes:
+    RegistryWriteBearer:
+      type: http
+      scheme: bearer
+      description: Same value as server env REGISTRY_WRITE_SECRET
+    RegistryRevokeBearer:
+      type: http
+      scheme: bearer
+      description: REGISTRY_REVOKE_SECRET when set; otherwise REGISTRY_WRITE_SECRET (DELETE only)
+  schemas:
+    HiveRegistryRecordV1:
+      $ref: "../schemas/hive-registry-record-v1.schema.json"

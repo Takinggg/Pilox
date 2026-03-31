@@ -1,0 +1,11 @@
+{
+  "schema": "hive-agent-manifest-v1",
+  "version": "1.0.0",
+  "name": "E2E Fixture Agent",
+  "description": "Minimal manifest for Playwright import flow (public static file).",
+  "runtime": {
+    "image": "nginx:alpine",
+    "cpuLimit": "1",
+    "memoryLimit": "128m"
+  }
+}

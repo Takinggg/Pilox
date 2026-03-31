@@ -1,0 +1,41 @@
+[Unit]
+Description=Hive Application Server
+Documentation=https://hive-os.dev/docs
+After=network-online.target hive-db.service hive-redis.service hive-vmnet.service
+Wants=network-online.target
+Requires=hive-db.service hive-redis.service hive-vmnet.service
+
+[Service]
+Type=simple
+User=hive
+Group=hive
+WorkingDirectory=/opt/hive/app
+EnvironmentFile=/etc/hive/hive.env
+ExecStart=/usr/bin/node server.js
+Restart=always
+RestartSec=5
+StartLimitBurst=5
+StartLimitIntervalSec=60
+
+# Security hardening
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/hive/app /var/log/hive /tmp /var/lib/hive/firecracker
+PrivateTmp=true
+
+# Firecracker VM management capabilities
+SupplementaryGroups=kvm
+AmbientCapabilities=CAP_NET_ADMIN
+
+# Resource limits
+MemoryMax=2G
+CPUQuota=200%
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=hive-app
+
+[Install]
+WantedBy=multi-user.target

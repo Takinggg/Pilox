@@ -1,0 +1,125 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "pilox-app.fullname" . }}
+  labels:
+    {{- include "pilox-app.labels" . | nindent 4 }}
+    app.kubernetes.io/component: app
+spec:
+  replicas: {{ .Values.replicaCount }}
+  revisionHistoryLimit: 5
+  selector:
+    matchLabels:
+      {{- include "pilox-app.selectorLabels" . | nindent 6 }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  template:
+    metadata:
+      labels:
+        {{- include "pilox-app.labels" . | nindent 8 }}
+        app.kubernetes.io/component: app
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+        checksum/secret: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
+        {{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- with .Values.serviceAccount }}
+      serviceAccountName: {{ .name | default (include "pilox-app.fullname" $) }}
+      {{- end }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      {{- with .Values.initContainers }}
+      initContainers:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: {{ .Chart.Name }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 3000
+              protocol: TCP
+          livenessProbe:
+            {{- toYaml .Values.livenessProbe | nindent 12 }}
+          readinessProbe:
+            {{- toYaml .Values.readinessProbe | nindent 12 }}
+          startupProbe:
+            {{- toYaml .Values.startupProbe | nindent 12 }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          env:
+            - name: NODE_ENV
+              value: {{ .Values.config.nodeEnv | quote }}
+            - name: HIVE_CLIENT_IP_SOURCE
+              value: {{ .Values.config.clientIpSource | quote }}
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.postgresql.existingSecret | default (include "pilox-app.postgresql-secret" .) }}
+                  key: {{ .Values.postgresql.secretKeys.password }}
+            - name: REDIS_URL
+              value: "redis://$(REDIS_HOST):$(REDIS_PORT)"
+            - name: REDIS_HOST
+              value: {{ .Values.redis.host | quote }}
+            - name: REDIS_PORT
+              value: {{ .Values.redis.port | quote | default "6379" }}
+            {{- if .Values.redis.password.existingSecret }}
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.redis.password.existingSecret }}
+                  key: {{ .Values.redis.password.secretKey }}
+            {{- end }}
+            {{- range .Values.env }}
+            - name: {{ .name }}
+              {{- if .value }}
+              value: {{ .value | quote }}
+              {{- else if .valueFrom }}
+              valueFrom:
+                {{- toYaml .valueFrom | nindent 16 }}
+              {{- end }}
+            {{- end }}
+          volumeMounts:
+            {{- with .Values.extraVolumeMounts }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          {{- with .Values.sidecarContainers }}
+          {{- toYaml . | nindent 8 }}
+          {{- end }}
+      volumes:
+        {{- with .Values.extraVolumes }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      {{- with .Values.image.pullSecrets }}
+      imagePullSecrets:
+        {{- range . }}
+        - name: {{ . }}
+        {{- end }}
+      {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              {{- include "pilox-app.selectorLabels" $ | nindent 14 }}

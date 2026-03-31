@@ -1,0 +1,12 @@
+dependencies:
+- name: hive-registry
+  repository: file://../hive-registry
+  version: 0.1.0
+- name: hive-mesh-gateway
+  repository: file://../hive-mesh-gateway
+  version: 0.1.0
+- name: hive-transport-bridge
+  repository: file://../hive-transport-bridge
+  version: 0.1.0
+digest: sha256:ed4b4934ee7a5fe1d73228cfe3e368978990d32ff37c39b3d19c67b5ac874f69
+generated: "2026-03-22T16:19:26.095481333Z"

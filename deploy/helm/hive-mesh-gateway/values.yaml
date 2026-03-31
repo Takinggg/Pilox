@@ -1,0 +1,89 @@
+replicaCount: 1
+
+# Optional labels on the gateway pod template — use for Prometheus `cluster` / `region` (multi-site SLO).
+# Example:
+# podLabels:
+#   cluster: eu-west-1
+#   region: eu
+podLabels: {}
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 8
+  targetCPUUtilizationPercentage: 75
+
+podDisruptionBudget:
+  enabled: false
+  minAvailable: 1
+
+image:
+  repository: pilox-mesh-gateway
+  pullPolicy: IfNotPresent
+  tag: "local"
+
+service:
+  type: ClusterIP
+  port: 4080
+
+# Must match Pilox public JSON-RPC path (default in stub).
+gateway:
+  upstreamBase: "http://pilox-app:3000"
+  jsonrpcPath: "/api/a2a/jsonrpc/public"
+  upstreamAuthSecret: ""
+  # Comma-separated substrings; POST /v1/a2a/jsonrpc returns 403 if User-Agent matches (case-insensitive)
+  blockUserAgents: ""
+  # Optional TLS (mount cert/key via extraVolumes / extraVolumeMounts); empty = HTTP
+  tlsCertPath: ""
+  tlsKeyPath: ""
+  mtlsCaPath: ""
+  securityHeaders: "0"
+  # Optional: protect GET /v1/metrics (Prometheus) with Bearer
+  metricsAuthSecret: ""
+  maxUrlBytes: "8192"
+  requestTimeoutMs: "60000"
+  rateLimitPerMin: 0
+  # Optional: same Redis URL as Pilox for shared JSON-RPC rate limit across gateway replicas
+  rateLimitRedisUrl: ""
+  maxBodyBytes: 524288
+  upstreamForwardFor: "off"
+  upstreamTimeoutMs: 60000
+
+ingress:
+  enabled: false
+  className: ""
+  # WAF / shielding (examples — uncomment for your ingress controller / cloud):
+  # nginx.ingress.kubernetes.io/enable-modsecurity: "true"
+  # nginx.ingress.kubernetes.io/enable-owasp-core-rules: "true"
+  # alb.ingress.kubernetes.io/wafv2-acl-arn: arn:aws:wafv2:region:account:regional/webacl/...
+  annotations: {}
+  hosts:
+    - host: mesh-gateway.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    memory: 256Mi
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
+
+# kube-prometheus-stack / Prometheus Operator
+serviceMonitor:
+  enabled: false
+  interval: 30s
+  scrapeTimeout: 10s
+  path: /v1/metrics
+  labels: {}
+
+prometheusRule:
+  enabled: false
+  for: 10m
+  labels: {}

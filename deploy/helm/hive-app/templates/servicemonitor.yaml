@@ -1,0 +1,37 @@
+{{- if .Values.monitoring.serviceMonitor.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "pilox-app.fullname" . }}
+  labels:
+    {{- include "pilox-app.labels" . | nindent 4 }}
+    {{- with .Values.monitoring.serviceMonitor.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- with .Values.monitoring.serviceMonitor.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  jobLabel: {{ .Chart.Name }}
+  selector:
+    matchLabels:
+      {{- include "pilox-app.labels" . | nindent 8 }}
+  namespaceSelector:
+    matchNames:
+      - {{ .Release.Namespace }}
+  endpoints:
+    - port: http
+      path: /api/metrics
+      interval: {{ .Values.monitoring.serviceMonitor.interval | default "30s" }}
+      scrapeTimeout: {{ .Values.monitoring.serviceMonitor.scrapeTimeout | default "10s" }}
+      scheme: http
+      tlsConfig:
+        insecureSkipVerify: false
+      bearerTokenFile: /var/run/secrets/kubernetes.io/serviceaccount/token
+      relabelings:
+        - sourceLabels: [__meta_kubernetes_pod_name]
+          targetLabel: pod
+        - sourceLabels: [__meta_kubernetes_pod_container_name]
+          targetLabel: container
+{{- end }}

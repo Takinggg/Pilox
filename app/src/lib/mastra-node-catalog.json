@@ -1,0 +1,1200 @@
+[
+  {
+    "name": "step",
+    "label": "Step",
+    "type": "workflow_step",
+    "category": "workflow",
+    "description": "A single workflow step with createStep(). Has typed input/output schemas, retry, suspend/resume.",
+    "inputs": [
+      {
+        "label": "Input Data",
+        "name": "inputData",
+        "type": "schema"
+      },
+      {
+        "label": "State",
+        "name": "state",
+        "type": "schema"
+      },
+      {
+        "label": "Resume Data",
+        "name": "resumeData",
+        "type": "schema"
+      }
+    ],
+    "source": "mastra"
+  },
+  {
+    "name": "parallel",
+    "label": "Parallel",
+    "type": "workflow_parallel",
+    "category": "workflow",
+    "description": "Executes multiple steps concurrently and waits for all branches.",
+    "inputs": [
+      {
+        "label": "Steps",
+        "name": "steps",
+        "type": "step[]"
+      }
+    ],
+    "source": "mastra"
+  },
+  {
+    "name": "conditional",
+    "label": "Conditional (Branch)",
+    "type": "workflow_conditional",
+    "category": "workflow",
+    "description": "Routes execution to matching branch step based on condition functions.",
+    "inputs": [
+      {
+        "label": "Steps",
+        "name": "steps",
+        "type": "step[]"
+      },
+      {
+        "label": "Conditions",
+        "name": "conditions",
+        "type": "function[]"
+      }
+    ],
+    "source": "mastra"
+  },
+  {
+    "name": "loop_dowhile",
+    "label": "Loop (Do-While)",
+    "type": "workflow_loop",
+    "category": "workflow",
+    "description": "Repeats a step while condition is true (do-while). Runs at least once.",
+    "inputs": [
+      {
+        "label": "Step",
+        "name": "step",
+        "type": "step"
+      },
+      {
+        "label": "Condition",
+        "name": "condition",
+        "type": "function"
+      },
+      {
+        "label": "Loop Type",
+        "name": "loopType",
+        "type": "dowhile"
+      }
+    ],
+    "source": "mastra"
+  },
+  {
+    "name": "loop_dountil",
+    "label": "Loop (Do-Until)",
+    "type": "workflow_loop",
+    "category": "workflow",
+    "description": "Repeats a step until condition is true (do-until). Runs at least once.",
+    "inputs": [
+      {
+        "label": "Step",
+        "name": "step",
+        "type": "step"
+      },
+      {
+        "label": "Condition",
+        "name": "condition",
+        "type": "function"
+      },
+      {
+        "label": "Loop Type",
+        "name": "loopType",
+        "type": "dountil"
+      }
+    ],
+    "source": "mastra"
+  },
+  {
+    "name": "foreach",
+    "label": "For-Each",
+    "type": "workflow_foreach",
+    "category": "workflow",
+    "description": "Iterates over a collection executing a step per element with configurable concurrency.",
+    "inputs": [
+      {
+        "label": "Step",
+        "name": "step",
+        "type": "step"
+      },
+      {
+        "label": "Concurrency",
+        "name": "concurrency",
+        "type": "number"
+      }
+    ],
+    "source": "mastra"
+  },
+  {
+    "name": "sleep",
+    "label": "Sleep (Duration)",
+    "type": "workflow_sleep",
+    "category": "workflow",
+    "description": "Pauses workflow for specified milliseconds or dynamic duration function.",
+    "inputs": [
+      {
+        "label": "Duration (ms)",
+        "name": "duration",
+        "type": "number"
+      },
+      {
+        "label": "Dynamic Duration Fn",
+        "name": "fn",
+        "type": "function"
+      }
+    ],
+    "source": "mastra"
+  },
+  {
+    "name": "sleep_until",
+    "label": "Sleep Until (Date)",
+    "type": "workflow_sleep_until",
+    "category": "workflow",
+    "description": "Pauses workflow until a specific date/time or dynamic date function.",
+    "inputs": [
+      {
+        "label": "Date",
+        "name": "date",
+        "type": "Date"
+      },
+      {
+        "label": "Dynamic Date Fn",
+        "name": "fn",
+        "type": "function"
+      }
+    ],
+    "source": "mastra"
+  },
+  {
+    "name": "workflow",
+    "label": "Workflow",
+    "type": "workflow",
+    "category": "workflow",
+    "description": "Top-level workflow container with createWorkflow(). Typed schemas, state, events, tracing.",
+    "source": "mastra",
+    "inputs": [
+      {
+        "label": "Name",
+        "name": "name",
+        "type": "string"
+      },
+      {
+        "label": "Input Schema",
+        "name": "inputSchema",
+        "type": "schema"
+      },
+      {
+        "label": "Output Schema",
+        "name": "outputSchema",
+        "type": "schema"
+      },
+      {
+        "label": "State Schema",
+        "name": "stateSchema",
+        "type": "schema"
+      }
+    ]
+  },
+  {
+    "name": "workflow_processor",
+    "label": "Processor Workflow",
+    "type": "workflow",
+    "category": "workflow",
+    "description": "A processor-type workflow running as agent input/output pipeline.",
+    "source": "mastra",
+    "inputs": [
+      {
+        "label": "Name",
+        "name": "name",
+        "type": "string"
+      },
+      {
+        "label": "Type",
+        "name": "type",
+        "type": "processor"
+      }
+    ]
+  },
+  {
+    "name": "agent",
+    "label": "Agent",
+    "type": "agent",
+    "category": "agent",
+    "description": "LLM-powered agent with instructions, tools, memory, voice, structured output, delegation, streaming. Usable as workflow step.",
+    "source": "mastra",
+    "inputs": [
+      {
+        "label": "Name",
+        "name": "name",
+        "type": "string"
+      },
+      {
+        "label": "Instructions",
+        "name": "instructions",
+        "type": "string"
+      },
+      {
+        "label": "Model",
+        "name": "model",
+        "type": "MastraLanguageModel"
+      },
+      {
+        "label": "Tools",
+        "name": "tools",
+        "type": "Tool[]"
+      },
+      {
+        "label": "Memory",
+        "name": "memory",
+        "type": "MastraMemory"
+      },
+      {
+        "label": "Voice",
+        "name": "voice",
+        "type": "MastraVoice"
+      },
+      {
+        "label": "Max Steps",
+        "name": "maxSteps",
+        "type": "number"
+      },
+      {
+        "label": "Output Schema",
+        "name": "output",
+        "type": "schema"
+      }
+    ]
+  },
+  {
+    "name": "agent_network",
+    "label": "Agent Network",
+    "type": "agent_network",
+    "category": "agent",
+    "description": "Multi-agent network delegating tasks via routing agent. Streaming, delegation hooks, task-complete detection.",
+    "source": "mastra",
+    "inputs": [
+      {
+        "label": "Agents",
+        "name": "agents",
+        "type": "Agent[]"
+      },
+      {
+        "label": "Routing Model",
+        "name": "model",
+        "type": "MastraLanguageModel"
+      },
+      {
+        "label": "Instructions",
+        "name": "instructions",
+        "type": "string"
+      }
+    ]
+  },
+  {
+    "name": "tool",
+    "label": "Tool",
+    "type": "tool",
+    "category": "tool",
+    "description": "Type-safe tool with createTool(). Input/output/suspend/resume schemas, execute, approval, MCP, provider options.",
+    "source": "mastra",
+    "inputs": [
+      {
+        "label": "ID",
+        "name": "id",
+        "type": "string"
+      },
+      {
+        "label": "Description",
+        "name": "description",
+        "type": "string"
+      },
+      {
+        "label": "Input Schema",
+        "name": "inputSchema",
+        "type": "schema"
+      },
+      {
+        "label": "Output Schema",
+        "name": "outputSchema",
+        "type": "schema"
+      },
+      {
+        "label": "Require Approval",
+        "name": "requireApproval",
+        "type": "boolean"
+      }
+    ]
+  },
+  {
+    "name": "tool_step",
+    "label": "Tool Step",
+    "type": "tool_step",
+    "category": "tool",
+    "description": "Tool promoted to workflow step (ToolStep) with inputSchema + outputSchema.",
+    "source": "mastra",
+    "inputs": [
+      {
+        "label": "Tool",
+        "name": "tool",
+        "type": "Tool"
+      },
+      {
+        "label": "Input Schema",
+        "name": "inputSchema",
+        "type": "schema"
+      },
+      {
+        "label": "Output Schema",
+        "name": "outputSchema",
+        "type": "schema"
+      }
+    ]
+  },
+  {
+    "name": "tool_call_step",
+    "label": "Tool Call Step (Agentic)",
+    "type": "tool_call_step",
+    "category": "tool",
+    "description": "Internal agentic loop step executing a single LLM tool call via createToolCallStep().",
+    "source": "mastra",
+    "inputs": [
+      {
+        "label": "Tool Set",
+        "name": "tools",
+        "type": "ToolSet"
+      },
+      {
+        "label": "Output Schema",
+        "name": "output",
+        "type": "schema"
+      }
+    ]
+  },
+  {
+    "name": "processor_moderation",
+    "label": "Moderation Processor",
+    "description": "Detects harmful/unsafe content using LLM-based moderation model.",
+    "inputs": [
+      {
+        "label": "Model",
+        "name": "model",
+        "type": "MastraLanguageModel"
+      },
+      {
+        "label": "Threshold",
+        "name": "threshold",
+        "type": "number"
+      }
+    ],
+    "type": "processor",
+    "category": "processor",
+    "source": "mastra"
+  },
+  {
+    "name": "processor_pii_detector",
+    "label": "PII Detector",
+    "description": "Detects and optionally redacts PII (emails, phones, SSNs) from messages.",
+    "inputs": [
+      {
+        "label": "Model",
+        "name": "model",
+        "type": "MastraLanguageModel"
+      },
+      {
+        "label": "Categories",
+        "name": "categories",
+        "type": "PIICategories"
+      }
+    ],
+    "type": "processor",
+    "category": "processor",
+    "source": "mastra"
+  },
+  {
+    "name": "processor_prompt_injection",
+    "label": "Prompt Injection Detector",
+    "description": "Detects prompt injection and jailbreak attempts via LLM scorer.",
+    "inputs": [
+      {
+        "label": "Model",
+        "name": "model",
+        "type": "MastraLanguageModel"
+      },
+      {
+        "label": "Threshold",
+        "name": "threshold",
+        "type": "number"
+      }
+    ],
+    "type": "processor",
+    "category": "processor",
+    "source": "mastra"
+  },
+  {
+    "name": "processor_language_detector",
+    "label": "Language Detector",
+    "description": "Detects language of incoming messages and optionally translates them.",
+    "inputs": [
+      {
+        "label": "Model",
+        "name": "model",
+        "type": "MastraLanguageModel"
+      },
+      {
+        "label": "Target Language",
+        "name": "targetLanguage",
+        "type": "string"
+      }
+    ],
+    "type": "processor",
+    "category": "processor",
+    "source": "mastra"
+  },
+  {
+    "name": "processor_structured_output",
+    "label": "Structured Output",
+    "description": "Ensures agent output conforms to a Zod/JSON schema.",
+    "inputs": [
+      {
+        "label": "Output Schema",
+        "name": "schema",
+        "type": "schema"
+      }
+    ],
+    "type": "processor",
+    "category": "processor",
+    "source": "mastra"
+  },
+  {
+    "name": "processor_batch_parts",
+    "label": "Batch Parts",
+    "description": "Batches streaming text parts into larger chunks before forwarding.",
+    "inputs": [
+      {
+        "label": "Batch Size",
+        "name": "batchSize",
+        "type": "number"
+      }
+    ],
+    "type": "processor",
+    "category": "processor",
+    "source": "mastra"
+  },
+  {
+    "name": "processor_token_limiter",
+    "label": "Token Limiter",
+    "description": "Limits token count sent to model by truncating or summarizing history.",
+    "inputs": [
+      {
+        "label": "Max Tokens",
+        "name": "maxTokens",
+        "type": "number"
+      }
+    ],
+    "type": "processor",
+    "category": "processor",
+    "source": "mastra"
+  },
+  {
+    "name": "processor_system_prompt_scrubber",
+    "label": "System Prompt Scrubber",
+    "description": "Detects and blocks attempts to extract or leak the system prompt.",
+    "inputs": [
+      {
+        "label": "Model",
+        "name": "model",
+        "type": "MastraLanguageModel"
+      }
+    ],
+    "type": "processor",
+    "category": "processor",
+    "source": "mastra"
+  },
+  {
+    "name": "processor_unicode_normalizer",
+    "label": "Unicode Normalizer",
+    "description": "Normalizes Unicode text (NFC/NFD/NFKC/NFKD) to prevent homoglyph attacks.",
+    "inputs": [
+      {
+        "label": "Form",
+        "name": "form",
+        "type": "string"
+      }
+    ],
+    "type": "processor",
+    "category": "processor",
+    "source": "mastra"
+  },
+  {
+    "name": "processor_tool_call_filter",
+    "label": "Tool Call Filter",
+    "description": "Filters or blocks specific tool calls based on allow/deny lists.",
+    "inputs": [
+      {
+        "label": "Allow List",
+        "name": "allow",
+        "type": "string[]"
+      },
+      {
+        "label": "Deny List",
+        "name": "deny",
+        "type": "string[]"
+      }
+    ],
+    "type": "processor",
+    "category": "processor",
+    "source": "mastra"
+  },
+  {
+    "name": "processor_tool_search",
+    "label": "Tool Search",
+    "description": "Dynamically selects relevant tools via semantic search over tool descriptions.",
+    "inputs": [
+      {
+        "label": "Max Tools",
+        "name": "maxTools",
+        "type": "number"
+      }
+    ],
+    "type": "processor",
+    "category": "processor",
+    "source": "mastra"
+  },
+  {
+    "name": "processor_skills",
+    "label": "Skills Processor",
+    "description": "Injects workspace skill tools into the agent tool set based on context.",
+    "inputs": [],
+    "type": "processor",
+    "category": "processor",
+    "source": "mastra"
+  },
+  {
+    "name": "processor_workspace_instructions",
+    "label": "Workspace Instructions",
+    "description": "Prepends workspace-level instructions to the agent system prompt.",
+    "inputs": [],
+    "type": "processor",
+    "category": "processor",
+    "source": "mastra"
+  },
+  {
+    "name": "scorer",
+    "label": "Scorer (Eval)",
+    "type": "scorer",
+    "category": "eval",
+    "description": "Reusable evaluation scorer for agent responses. Prompt-based (LLM-as-judge) or custom functions.",
+    "source": "mastra",
+    "inputs": [
+      {
+        "label": "Name",
+        "name": "name",
+        "type": "string"
+      },
+      {
+        "label": "Description",
+        "name": "description",
+        "type": "string"
+      },
+      {
+        "label": "Model",
+        "name": "model",
+        "type": "MastraLanguageModel"
+      },
+      {
+        "label": "Schema",
+        "name": "schema",
+        "type": "schema"
+      }
+    ]
+  },
+  {
+    "name": "voice_speak",
+    "label": "Voice Speak (TTS)",
+    "type": "voice",
+    "category": "voice",
+    "description": "Text-to-speech provider converting text into audio stream.",
+    "source": "mastra",
+    "inputs": [
+      {
+        "label": "Speech Model",
+        "name": "speechModel",
+        "type": "string"
+      },
+      {
+        "label": "Speaker",
+        "name": "speaker",
+        "type": "string"
+      }
+    ]
+  },
+  {
+    "name": "voice_listen",
+    "label": "Voice Listen (STT)",
+    "type": "voice",
+    "category": "voice",
+    "description": "Speech-to-text provider converting audio into text.",
+    "source": "mastra",
+    "inputs": [
+      {
+        "label": "Listening Model",
+        "name": "listeningModel",
+        "type": "string"
+      }
+    ]
+  },
+  {
+    "name": "voice_composite",
+    "label": "Composite Voice",
+    "type": "voice",
+    "category": "voice",
+    "description": "Combines separate TTS and STT providers into a single voice interface.",
+    "source": "mastra",
+    "inputs": [
+      {
+        "label": "Speak Provider",
+        "name": "speakProvider",
+        "type": "MastraVoice"
+      },
+      {
+        "label": "Listen Provider",
+        "name": "listenProvider",
+        "type": "MastraVoice"
+      }
+    ]
+  },
+  {
+    "name": "memory",
+    "label": "Memory",
+    "type": "memory",
+    "category": "memory",
+    "description": "Persistent conversation memory with optional working memory and semantic vector recall.",
+    "source": "mastra",
+    "inputs": [
+      {
+        "label": "Storage",
+        "name": "storage",
+        "type": "MastraStorage"
+      },
+      {
+        "label": "Vector Store",
+        "name": "vector",
+        "type": "MastraVector"
+      },
+      {
+        "label": "Working Memory",
+        "name": "workingMemory",
+        "type": "WorkingMemoryConfig"
+      }
+    ]
+  },
+  {
+    "name": "mcp_server",
+    "label": "MCP Server",
+    "type": "mcp",
+    "category": "integration",
+    "description": "Model Context Protocol server exposing tools/resources/prompts over MCP (stdio or SSE).",
+    "source": "mastra",
+    "inputs": [
+      {
+        "label": "Name",
+        "name": "name",
+        "type": "string"
+      },
+      {
+        "label": "Transport",
+        "name": "transport",
+        "type": "stdio | sse"
+      },
+      {
+        "label": "Tools",
+        "name": "tools",
+        "type": "Tool[]"
+      }
+    ]
+  },
+  {
+    "name": "mcp_client",
+    "label": "MCP Client (Tool Provider)",
+    "type": "mcp",
+    "category": "integration",
+    "description": "Connects to external MCP server and imports its tools.",
+    "source": "mastra",
+    "inputs": [
+      {
+        "label": "Server URL",
+        "name": "url",
+        "type": "string"
+      },
+      {
+        "label": "Transport",
+        "name": "transport",
+        "type": "stdio | sse"
+      }
+    ]
+  },
+  {
+    "name": "integration",
+    "label": "Integration",
+    "type": "integration",
+    "category": "integration",
+    "description": "Base integration class bundling tools and workflows from an external service.",
+    "source": "mastra",
+    "inputs": [
+      {
+        "label": "Name",
+        "name": "name",
+        "type": "string"
+      },
+      {
+        "label": "API Client",
+        "name": "apiClient",
+        "type": "object"
+      }
+    ]
+  },
+  {
+    "name": "openapi_toolset",
+    "label": "OpenAPI Toolset",
+    "type": "integration",
+    "category": "integration",
+    "description": "Generates Mastra tools from an OpenAPI spec. Each operation becomes a callable tool.",
+    "source": "mastra",
+    "inputs": [
+      {
+        "label": "Spec URL or Path",
+        "name": "spec",
+        "type": "string"
+      },
+      {
+        "label": "Base URL",
+        "name": "baseUrl",
+        "type": "string"
+      }
+    ]
+  },
+  {
+    "name": "vector_store_astra",
+    "label": "DataStax Astra",
+    "type": "vector_store",
+    "category": "storage",
+    "description": "Vector store backend: DataStax Astra. Implements MastraVector for similarity search, upsert, and delete.",
+    "source": "mastra",
+    "inputs": [
+      {
+        "label": "Connection Config",
+        "name": "connectionConfig",
+        "type": "object"
+      }
+    ]
+  },
+  {
+    "name": "vector_store_chroma",
+    "label": "Chroma",
+    "type": "vector_store",
+    "category": "storage",
+    "description": "Vector store backend: Chroma. Implements MastraVector for similarity search, upsert, and delete.",
+    "source": "mastra",
+    "inputs": [
+      {
+        "label": "Connection Config",
+        "name": "connectionConfig",
+        "type": "object"
+      }
+    ]
+  },
+  {
+    "name": "vector_store_clickhouse",
+    "label": "ClickHouse",
+    "type": "vector_store",
+    "category": "storage",
+    "description": "Vector store backend: ClickHouse. Implements MastraVector for similarity search, upsert, and delete.",
+    "source": "mastra",
+    "inputs": [
+      {
+        "label": "Connection Config",
+        "name": "connectionConfig",
+        "type": "object"
+      }
+    ]
+  },
+  {
+    "name": "vector_store_cloudflare",
+    "label": "Cloudflare Vectorize (Workers)",
+    "type": "vector_store",
+    "category": "storage",
+    "description": "Vector store backend: Cloudflare Vectorize (Workers). Implements MastraVector for similarity search, upsert, and delete.",
+    "source": "mastra",
+    "inputs": [
+      {
+        "label": "Connection Config",
+        "name": "connectionConfig",
+        "type": "object"
+      }
+    ]
+  },
+  {
+    "name": "vector_store_cloudflare_d1",
+    "label": "Cloudflare D1",
+    "type": "vector_store",
+    "category": "storage",
+    "description": "Vector store backend: Cloudflare D1. Implements MastraVector for similarity search, upsert, and delete.",
+    "source": "mastra",
+    "inputs": [
+      {
+        "label": "Connection Config",
+        "name": "connectionConfig",
+        "type": "object"
+      }
+    ]
+  },
+  {
+    "name": "vector_store_convex",
+    "label": "Convex",
+    "type": "vector_store",
+    "category": "storage",
+    "description": "Vector store backend: Convex. Implements MastraVector for similarity search, upsert, and delete.",
+    "source": "mastra",
+    "inputs": [
+      {
+        "label": "Connection Config",
+        "name": "connectionConfig",
+        "type": "object"
+      }
+    ]
+  },
+  {
+    "name": "vector_store_couchbase",
+    "label": "Couchbase",
+    "type": "vector_store",
+    "category": "storage",
+    "description": "Vector store backend: Couchbase. Implements MastraVector for similarity search, upsert, and delete.",
+    "source": "mastra",
+    "inputs": [
+      {
+        "label": "Connection Config",
+        "name": "connectionConfig",
+        "type": "object"
+      }
+    ]
+  },
+  {
+    "name": "vector_store_duckdb",
+    "label": "DuckDB",
+    "type": "vector_store",
+    "category": "storage",
+    "description": "Vector store backend: DuckDB. Implements MastraVector for similarity search, upsert, and delete.",
+    "source": "mastra",
+    "inputs": [
+      {
+        "label": "Connection Config",
+        "name": "connectionConfig",
+        "type": "object"
+      }
+    ]
+  },
+  {
+    "name": "vector_store_dynamodb",
+    "label": "DynamoDB",
+    "type": "vector_store",
+    "category": "storage",
+    "description": "Vector store backend: DynamoDB. Implements MastraVector for similarity search, upsert, and delete.",
+    "source": "mastra",
+    "inputs": [
+      {
+        "label": "Connection Config",
+        "name": "connectionConfig",
+        "type": "object"
+      }
+    ]
+  },
+  {
+    "name": "vector_store_elasticsearch",
+    "label": "Elasticsearch",
+    "type": "vector_store",
+    "category": "storage",
+    "description": "Vector store backend: Elasticsearch. Implements MastraVector for similarity search, upsert, and delete.",
+    "source": "mastra",
+    "inputs": [
+      {
+        "label": "Connection Config",
+        "name": "connectionConfig",
+        "type": "object"
+      }
+    ]
+  },
+  {
+    "name": "vector_store_lance",
+    "label": "LanceDB",
+    "type": "vector_store",
+    "category": "storage",
+    "description": "Vector store backend: LanceDB. Implements MastraVector for similarity search, upsert, and delete.",
+    "source": "mastra",
+    "inputs": [
+      {
+        "label": "Connection Config",
+        "name": "connectionConfig",
+        "type": "object"
+      }
+    ]
+  },
+  {
+    "name": "vector_store_libsql",
+    "label": "LibSQL (Turso)",
+    "type": "vector_store",
+    "category": "storage",
+    "description": "Vector store backend: LibSQL (Turso). Implements MastraVector for similarity search, upsert, and delete.",
+    "source": "mastra",
+    "inputs": [
+      {
+        "label": "Connection Config",
+        "name": "connectionConfig",
+        "type": "object"
+      }
+    ]
+  },
+  {
+    "name": "vector_store_mongodb",
+    "label": "MongoDB Atlas",
+    "type": "vector_store",
+    "category": "storage",
+    "description": "Vector store backend: MongoDB Atlas. Implements MastraVector for similarity search, upsert, and delete.",
+    "source": "mastra",
+    "inputs": [
+      {
+        "label": "Connection Config",
+        "name": "connectionConfig",
+        "type": "object"
+      }
+    ]
+  },
+  {
+    "name": "vector_store_mssql",
+    "label": "Microsoft SQL Server",
+    "type": "vector_store",
+    "category": "storage",
+    "description": "Vector store backend: Microsoft SQL Server. Implements MastraVector for similarity search, upsert, and delete.",
+    "source": "mastra",
+    "inputs": [
+      {
+        "label": "Connection Config",
+        "name": "connectionConfig",
+        "type": "object"
+      }
+    ]
+  },
+  {
+    "name": "vector_store_opensearch",
+    "label": "OpenSearch",
+    "type": "vector_store",
+    "category": "storage",
+    "description": "Vector store backend: OpenSearch. Implements MastraVector for similarity search, upsert, and delete.",
+    "source": "mastra",
+    "inputs": [
+      {
+        "label": "Connection Config",
+        "name": "connectionConfig",
+        "type": "object"
+      }
+    ]
+  },
+  {
+    "name": "vector_store_pg",
+    "label": "PostgreSQL (pgvector)",
+    "type": "vector_store",
+    "category": "storage",
+    "description": "Vector store backend: PostgreSQL (pgvector). Implements MastraVector for similarity search, upsert, and delete.",
+    "source": "mastra",
+    "inputs": [
+      {
+        "label": "Connection Config",
+        "name": "connectionConfig",
+        "type": "object"
+      }
+    ]
+  },
+  {
+    "name": "vector_store_pinecone",
+    "label": "Pinecone",
+    "type": "vector_store",
+    "category": "storage",
+    "description": "Vector store backend: Pinecone. Implements MastraVector for similarity search, upsert, and delete.",
+    "source": "mastra",
+    "inputs": [
+      {
+        "label": "Connection Config",
+        "name": "connectionConfig",
+        "type": "object"
+      }
+    ]
+  },
+  {
+    "name": "vector_store_qdrant",
+    "label": "Qdrant",
+    "type": "vector_store",
+    "category": "storage",
+    "description": "Vector store backend: Qdrant. Implements MastraVector for similarity search, upsert, and delete.",
+    "source": "mastra",
+    "inputs": [
+      {
+        "label": "Connection Config",
+        "name": "connectionConfig",
+        "type": "object"
+      }
+    ]
+  },
+  {
+    "name": "vector_store_s3vectors",
+    "label": "Amazon S3 Vectors",
+    "type": "vector_store",
+    "category": "storage",
+    "description": "Vector store backend: Amazon S3 Vectors. Implements MastraVector for similarity search, upsert, and delete.",
+    "source": "mastra",
+    "inputs": [
+      {
+        "label": "Connection Config",
+        "name": "connectionConfig",
+        "type": "object"
+      }
+    ]
+  },
+  {
+    "name": "vector_store_turbopuffer",
+    "label": "Turbopuffer",
+    "type": "vector_store",
+    "category": "storage",
+    "description": "Vector store backend: Turbopuffer. Implements MastraVector for similarity search, upsert, and delete.",
+    "source": "mastra",
+    "inputs": [
+      {
+        "label": "Connection Config",
+        "name": "connectionConfig",
+        "type": "object"
+      }
+    ]
+  },
+  {
+    "name": "vector_store_upstash",
+    "label": "Upstash Vector",
+    "type": "vector_store",
+    "category": "storage",
+    "description": "Vector store backend: Upstash Vector. Implements MastraVector for similarity search, upsert, and delete.",
+    "source": "mastra",
+    "inputs": [
+      {
+        "label": "Connection Config",
+        "name": "connectionConfig",
+        "type": "object"
+      }
+    ]
+  },
+  {
+    "name": "vector_store_vectorize",
+    "label": "Cloudflare Vectorize",
+    "type": "vector_store",
+    "category": "storage",
+    "description": "Vector store backend: Cloudflare Vectorize. Implements MastraVector for similarity search, upsert, and delete.",
+    "source": "mastra",
+    "inputs": [
+      {
+        "label": "Connection Config",
+        "name": "connectionConfig",
+        "type": "object"
+      }
+    ]
+  },
+  {
+    "name": "harness_ask_user",
+    "label": "Ask User",
+    "type": "harness_tool",
+    "category": "harness",
+    "description": "Ask the user a question and wait for their response. Supports structured choices or open-ended questions.",
+    "source": "mastra",
+    "inputs": [
+      {
+        "label": "Question",
+        "name": "question",
+        "type": "string"
+      },
+      {
+        "label": "Options",
+        "name": "options",
+        "type": "string[]"
+      }
+    ]
+  },
+  {
+    "name": "harness_submit_plan",
+    "label": "Submit Plan",
+    "type": "harness_tool",
+    "category": "harness",
+    "description": "Submit a step-by-step plan for accomplishing a task. Each step has a title, description, and tool references.",
+    "source": "mastra",
+    "inputs": [
+      {
+        "label": "Steps",
+        "name": "steps",
+        "type": "PlanStep[]"
+      }
+    ]
+  },
+  {
+    "name": "harness_task_write",
+    "label": "Task Write",
+    "type": "harness_tool",
+    "category": "harness",
+    "description": "Write content to a file at a specified path. Creates or overwrites the file with provided content.",
+    "source": "mastra",
+    "inputs": [
+      {
+        "label": "Path",
+        "name": "path",
+        "type": "string"
+      },
+      {
+        "label": "Content",
+        "name": "content",
+        "type": "string"
+      }
+    ]
+  },
+  {
+    "name": "harness_task_check",
+    "label": "Task Check",
+    "type": "harness_tool",
+    "category": "harness",
+    "description": "Check if a task or subtask has been completed by verifying expected outcomes and conditions.",
+    "source": "mastra",
+    "inputs": [
+      {
+        "label": "Task ID",
+        "name": "taskId",
+        "type": "string"
+      }
+    ]
+  },
+  {
+    "name": "a2a_client",
+    "label": "A2A Client",
+    "type": "a2a",
+    "category": "integration",
+    "description": "Google Agent-to-Agent protocol client. Sends JSON-RPC tasks to a remote A2A agent.",
+    "source": "mastra",
+    "inputs": [
+      {
+        "label": "Agent URL",
+        "name": "url",
+        "type": "string"
+      },
+      {
+        "label": "Agent Card",
+        "name": "agentCard",
+        "type": "AgentCard"
+      }
+    ]
+  }
+]

@@ -1,0 +1,69 @@
+{{- if and .Values.subscriber.enabled .Values.subscriber.natsUrl }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "pilox-transport-bridge.fullname" . }}-subscriber
+  labels:
+    {{- include "pilox-transport-bridge.labels" . | nindent 4 }}
+    app.kubernetes.io/component: subscriber
+spec:
+  replicas: {{ .Values.subscriber.replicaCount }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ include "pilox-transport-bridge.name" . }}
+      app.kubernetes.io/instance: {{ .Release.Name }}
+      app.kubernetes.io/component: subscriber
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ include "pilox-transport-bridge.name" . }}
+        app.kubernetes.io/instance: {{ .Release.Name }}
+        app.kubernetes.io/component: subscriber
+        {{- with .Values.subscriber.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- if and .Values.subscriber.natsTls.enabled .Values.subscriber.natsTls.secretName }}
+      volumes:
+{{- include "pilox-transport-bridge.natsTlsVolume" (dict "root" $ "component" "subscriber") | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: subscriber
+          image: "{{ .Values.subscriber.image.repository }}:{{ .Values.subscriber.image.tag }}"
+          imagePullPolicy: {{ .Values.subscriber.image.pullPolicy }}
+          command: ["node", "src/subscriber.mjs"]
+          env:
+            - name: BRIDGE_ENVELOPE_SCHEMA_PATH
+              value: "/schemas/wan-envelope-v1.schema.json"
+            - name: SUBSCRIBER_NATS_URL
+              value: {{ .Values.subscriber.natsUrl | quote }}
+            - name: SUBSCRIBER_NATS_SUBJECT
+              value: {{ .Values.subscriber.natsSubject | quote }}
+            - name: SUBSCRIBER_NATS_MODE
+              value: {{ .Values.subscriber.natsMode | quote }}
+            {{- if .Values.subscriber.hiveWanIngestUrl }}
+            - name: HIVE_WAN_INGEST_URL
+              value: {{ .Values.subscriber.hiveWanIngestUrl | quote }}
+            {{- end }}
+            {{- if .Values.subscriber.hiveWanIngestTokenExistingSecret }}
+            - name: HIVE_WAN_INGEST_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.subscriber.hiveWanIngestTokenExistingSecret | quote }}
+                  key: {{ .Values.subscriber.hiveWanIngestTokenExistingKey | quote }}
+            {{- else if .Values.subscriber.hiveWanIngestToken }}
+            - name: HIVE_WAN_INGEST_TOKEN
+              value: {{ .Values.subscriber.hiveWanIngestToken | quote }}
+            {{- end }}
+            {{- if .Values.subscriber.dlqSubject }}
+            - name: HIVE_WAN_INGEST_DLQ_SUBJECT
+              value: {{ .Values.subscriber.dlqSubject | quote }}
+            {{- end }}
+{{- include "pilox-transport-bridge.natsTlsEnv" (dict "root" $ "component" "subscriber") | nindent 12 }}
+          {{- if and .Values.subscriber.natsTls.enabled .Values.subscriber.natsTls.secretName }}
+          volumeMounts:
+{{- include "pilox-transport-bridge.natsTlsVolumeMount" (dict "root" $ "component" "subscriber") | nindent 12 }}
+          {{- end }}
+          resources:
+            {{- toYaml .Values.subscriber.resources | nindent 12 }}
+{{- end }}

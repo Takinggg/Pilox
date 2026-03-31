@@ -1,0 +1,5 @@
+# Hugging Face download script (download-public-datasets.py)
+huggingface_hub>=0.26.0
+# convert_hf_public_to_hive.py (parquet -> JSONL)
+pandas>=2.0.0
+pyarrow>=14.0.0

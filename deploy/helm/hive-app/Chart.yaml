@@ -1,0 +1,22 @@
+apiVersion: v2
+name: pilox-app
+description: Pilox AI Agent Infrastructure Platform
+type: application
+version: 1.0.0
+appVersion: "2026.03"
+kubeVersion: ">=1.26-0"
+keywords:
+  - ai
+  - agents
+  - infrastructure
+  - self-hosted
+  - llm
+  - workflow
+maintainers:
+  - name: Pilox Contributors
+    url: https://github.com/Takinggg/Pilox
+sources:
+  - https://github.com/Takinggg/Pilox
+annotations:
+  category: Application
+  licenses: BSL-1.1

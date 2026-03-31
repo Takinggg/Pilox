@@ -1,0 +1,22 @@
+{{- if .Values.serviceMonitor.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "pilox-mesh-gateway.fullname" . }}
+  labels:
+    {{- include "pilox-mesh-gateway.labels" . | nindent 4 }}
+    {{- with .Values.serviceMonitor.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ include "pilox-mesh-gateway.name" . }}
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  endpoints:
+    - port: http
+      path: {{ .Values.serviceMonitor.path | quote }}
+      interval: {{ .Values.serviceMonitor.interval | quote }}
+      scrapeTimeout: {{ .Values.serviceMonitor.scrapeTimeout | quote }}
+      scheme: http
+{{- end }}

@@ -1,0 +1,69 @@
+# Exemple — OpenTelemetry Collector (distribution **contrib** requise pour le connecteur `spanmetrics`).
+#
+# Déploiement Docker Hive (profil `otel`) : voir `otel-collector-docker.local.yaml` (Tempo + spanmetrics).
+# Ce fichier sert d’exemple autonome ou de base pour un collecteur sans stack Hive.
+#
+# Usage typique avec Hive :
+#   - Hive envoie traces + métriques applicatives en OTLP/HTTP vers ce collecteur
+#     (`OTEL_EXPORTER_OTLP_ENDPOINT=http://<collector>:4318`).
+#   - Ce fichier ajoute des **métriques dérivées des spans** (durée par `http.route`, etc.)
+#     exposées au format Prometheus sur :8889 pour scrape Prometheus/Mimir.
+#
+# Important : branche **aussi** un exporter de traces (Tempo, Jaeger, OTLP vers un autre
+# collecteur) en parallèle de `spanmetrics`, sinon vous ne conservez que les agrégats.
+#
+# Réf. connecteur : https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/connector/spanmetricsconnector
+
+receivers:
+  otlp:
+    protocols:
+      http:
+        endpoint: 0.0.0.0:4318
+      grpc:
+        endpoint: 0.0.0.0:4317
+
+processors:
+  batch: {}
+
+connectors:
+  spanmetrics:
+    # Préfixe métriques Prometheus (ex. hive_span_calls_total, hive_span_duration_milliseconds_*)
+    namespace: hive_span
+    histogram:
+      explicit:
+        buckets:
+          [
+            2ms, 4ms, 8ms, 16ms, 32ms, 64ms, 128ms, 256ms, 512ms,
+            1s, 2s, 5s, 10s, 30s,
+          ]
+    dimensions:
+      - name: http.route
+      - name: http.request.method
+      - name: http.response.status_code
+
+exporters:
+  prometheus:
+    endpoint: 0.0.0.0:8889
+    resource_to_telemetry_conversion:
+      enabled: true
+  # Décommenter et pointer vers votre backend de traces :
+  # otlphttp/traces:
+  #   endpoint: http://tempo:4318/v1/traces
+
+extensions:
+  health_check:
+    endpoint: 0.0.0.0:13133
+
+service:
+  extensions: [health_check]
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [batch]
+      exporters:
+        - spanmetrics
+        # - otlphttp/traces
+    metrics:
+      receivers: [otlp, spanmetrics]
+      processors: [batch]
+      exporters: [prometheus]

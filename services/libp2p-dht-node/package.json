@@ -1,0 +1,22 @@
+{
+  "name": "@pilox/libp2p-dht-node",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Optional libp2p node with Kademlia DHT (reference / lab). Not required for Pilox core.",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "scripts": {
+    "start": "node src/main.mjs",
+    "check": "node --check src/main.mjs"
+  },
+  "dependencies": {
+    "@libp2p/bootstrap": "^12.0.14",
+    "@libp2p/kad-dht": "^16.1.6",
+    "@libp2p/tcp": "^11.0.13",
+    "@libp2p/identify": "^4.0.13",
+    "@libp2p/ping": "^3.0.13",
+    "libp2p": "^3.1.6"
+  }
+}

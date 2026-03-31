@@ -1,0 +1,119 @@
+{
+  "description": "Canonical Hive Docker images used when importing or composing agents. Names and roles are derived from app/src/lib/importers/*.ts.",
+  "images": [
+    {
+      "image": "hive/http-input:latest",
+      "role": "ingress",
+      "maps_from": ["Flowise: Chat Models entry", "Langflow: ChatInput, TextInput", "Dify: start", "n8n: webhook"],
+      "typical_use": "HTTP/chat ingress, webhook start"
+    },
+    {
+      "image": "hive/http-output:latest",
+      "role": "egress",
+      "maps_from": ["Langflow: ChatOutput", "Dify: end, answer", "n8n: respondToWebhook"],
+      "typical_use": "Return response to caller"
+    },
+    {
+      "image": "hive/llm-agent:latest",
+      "role": "llm",
+      "maps_from": ["Flowise: Chat Models, Agents, many LLM nodes", "Langflow: *Model", "Dify: llm, question-classifier, parameter-extractor", "n8n: lmChatOllama, lmChatOpenAi, agent"],
+      "typical_use": "Primary LLM reasoning, chat, classification"
+    },
+    {
+      "image": "hive/llm-chain:latest",
+      "role": "chain",
+      "maps_from": ["Flowise: Chains", "Langflow: ConversationChain, LLMChain", "n8n: chainLlm"],
+      "typical_use": "Sequential LLM chains"
+    },
+    {
+      "image": "hive/rag-agent:latest",
+      "role": "rag",
+      "maps_from": ["Flowise: Vector Stores, Retrievers, conversationalRetrievalQAChain", "Langflow: VectorStoreRetriever, Chroma, FAISS, RetrievalQA", "Dify: knowledge-retrieval", "n8n: vectorStoreInMemory, chainRetrievalQa"],
+      "typical_use": "Retrieval, vector store, QA over documents"
+    },
+    {
+      "image": "hive/embedding-agent:latest",
+      "role": "embedding",
+      "maps_from": ["Flowise: Embeddings e.g. openAIEmbeddings", "Langflow: embedding components"],
+      "typical_use": "Embed text for vector pipelines"
+    },
+    {
+      "image": "hive/tool-agent:latest",
+      "role": "tools",
+      "maps_from": ["Flowise: Tools", "Dify: tool", "n8n: tool connections"],
+      "typical_use": "External tools, search, APIs exposed as tools"
+    },
+    {
+      "image": "hive/memory-agent:latest",
+      "role": "memory",
+      "maps_from": ["Flowise: Memory e.g. bufferMemory"],
+      "typical_use": "Conversation memory"
+    },
+    {
+      "image": "hive/doc-loader:latest",
+      "role": "ingest",
+      "maps_from": ["Flowise: Document Loaders"],
+      "typical_use": "Load documents into pipeline"
+    },
+    {
+      "image": "hive/text-processor:latest",
+      "role": "text",
+      "maps_from": ["Flowise: Text Splitters", "Dify: template-transform, variable-assigner, variable-aggregator"],
+      "typical_use": "Split, template, assign variables"
+    },
+    {
+      "image": "hive/output-parser:latest",
+      "role": "parse",
+      "maps_from": ["Flowise: Output Parsers"],
+      "typical_use": "Structured LLM output parsing"
+    },
+    {
+      "image": "hive/prompt-template:latest",
+      "role": "prompt",
+      "maps_from": ["Flowise: Prompts", "Langflow: Prompt"],
+      "typical_use": "Prompt templates"
+    },
+    {
+      "image": "hive/api-caller:latest",
+      "role": "http",
+      "maps_from": ["Langflow: APIRequest", "Dify: http-request", "n8n: httpRequest"],
+      "typical_use": "Outbound HTTP to REST APIs"
+    },
+    {
+      "image": "hive/code-runner:latest",
+      "role": "code",
+      "maps_from": ["Langflow: Python/code components", "Dify: code", "n8n: code"],
+      "typical_use": "Custom code transform (sandbox policy applies)"
+    },
+    {
+      "image": "hive/router-agent:latest",
+      "role": "route",
+      "maps_from": ["Dify: if-else"],
+      "typical_use": "Conditional routing between branches"
+    },
+    {
+      "image": "hive/iterator-agent:latest",
+      "role": "loop",
+      "maps_from": ["Dify: iteration"],
+      "typical_use": "Loops over collections"
+    },
+    {
+      "image": "hive/db-connector:latest",
+      "role": "database",
+      "maps_from": ["n8n: postgres"],
+      "typical_use": "SQL database access"
+    },
+    {
+      "image": "hive/redis-connector:latest",
+      "role": "cache",
+      "maps_from": ["n8n: redis"],
+      "typical_use": "Redis cache/queue"
+    },
+    {
+      "image": "hive/generic-agent:latest",
+      "role": "fallback",
+      "maps_from": ["Any unmapped import node"],
+      "typical_use": "Placeholder when source node has no direct mapping — user must review"
+    }
+  ]
+}

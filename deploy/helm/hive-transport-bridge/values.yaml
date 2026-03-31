@@ -1,0 +1,86 @@
+# Build image from repo root:
+#   docker build -f services/transport-bridge/Dockerfile -t pilox-transport-bridge:local .
+
+bridge:
+  enabled: true
+  replicaCount: 1
+  image:
+    repository: pilox-transport-bridge
+    pullPolicy: IfNotPresent
+    tag: "local"
+  service:
+    type: ClusterIP
+    port: 4081
+  ingress:
+    enabled: false
+    className: ""
+    annotations: {}
+    hosts:
+      - host: bridge.example.com
+        paths:
+          - path: /
+            pathType: Prefix
+    tls: []
+  resources:
+    requests:
+      cpu: 25m
+      memory: 64Mi
+    limits:
+      memory: 256Mi
+  podLabels: {}
+  # Strongly recommended when NATS is reachable from the pod network (see server.mjs warning).
+  internalSecret: ""
+  # Optional: use an existing Secret key instead of creating one from internalSecret
+  internalSecretExistingSecret: ""
+  internalSecretExistingKey: "bridge-internal-secret"
+  natsUrl: ""
+  natsSubject: "pilox.mesh.wan"
+  natsMode: "jetstream"
+  maxBodyBytes: 1048576
+  rateLimitPerMin: 0
+  logPublish: "0"
+  # Optional: protect GET /v1/metrics (Prometheus) with Bearer
+  metricsAuthSecret: ""
+  # Optional: mount TLS material for NATS (TLS / mTLS). Secret keys become files under mountPath.
+  natsTls:
+    enabled: false
+    secretName: ""
+    mountPath: /etc/nats-tls
+    caFilename: ""
+    certFilename: ""
+    keyFilename: ""
+    insecureSkipVerify: false
+
+subscriber:
+  enabled: false
+  replicaCount: 1
+  image:
+    repository: pilox-transport-bridge
+    pullPolicy: IfNotPresent
+    tag: "local"
+  resources:
+    requests:
+      cpu: 25m
+      memory: 64Mi
+    limits:
+      memory: 256Mi
+  podLabels: {}
+  natsUrl: ""
+  natsSubject: "pilox.mesh.wan"
+  natsMode: "jetstream"
+  hiveWanIngestUrl: ""
+  hiveWanIngestToken: ""
+  hiveWanIngestTokenExistingSecret: ""
+  hiveWanIngestTokenExistingKey: "token"
+  dlqSubject: ""
+  natsTls:
+    enabled: false
+    secretName: ""
+    mountPath: /etc/nats-tls
+    caFilename: ""
+    certFilename: ""
+    keyFilename: ""
+    insecureSkipVerify: false
+
+nameOverride: ""
+fullnameOverride: ""

@@ -1,0 +1,51 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "pilox-registry.fullname" . }}
+  labels:
+    {{- include "pilox-registry.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ include "pilox-registry.name" . }}
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ include "pilox-registry.name" . }}
+        app.kubernetes.io/instance: {{ .Release.Name }}
+        {{- with .Values.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      containers:
+        - name: registry
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 4077
+              protocol: TCP
+          {{- with .Values.envFrom }}
+          envFrom:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- range .Values.extraEnv }}
+          - name: {{ .name }}
+            value: {{ .value | quote }}
+          {{- end }}
+          readinessProbe:
+            httpGet:
+              path: /v1/health
+              port: http
+            initialDelaySeconds: 3
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /v1/health
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}

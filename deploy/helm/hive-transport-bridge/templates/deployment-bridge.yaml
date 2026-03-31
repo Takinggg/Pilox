@@ -1,0 +1,96 @@
+{{- if .Values.bridge.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "pilox-transport-bridge.fullname" . }}-bridge
+  labels:
+    {{- include "pilox-transport-bridge.labels" . | nindent 4 }}
+    app.kubernetes.io/component: bridge
+spec:
+  replicas: {{ .Values.bridge.replicaCount }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ include "pilox-transport-bridge.name" . }}
+      app.kubernetes.io/instance: {{ .Release.Name }}
+      app.kubernetes.io/component: bridge
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ include "pilox-transport-bridge.name" . }}
+        app.kubernetes.io/instance: {{ .Release.Name }}
+        app.kubernetes.io/component: bridge
+        {{- with .Values.bridge.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- if and .Values.bridge.natsTls.enabled .Values.bridge.natsTls.secretName }}
+      volumes:
+{{- include "pilox-transport-bridge.natsTlsVolume" (dict "root" $ "component" "bridge") | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: bridge
+          image: "{{ .Values.bridge.image.repository }}:{{ .Values.bridge.image.tag }}"
+          imagePullPolicy: {{ .Values.bridge.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 4081
+              protocol: TCP
+          env:
+            - name: PORT
+              value: "4081"
+            - name: BRIDGE_ENVELOPE_SCHEMA_PATH
+              value: "/schemas/wan-envelope-v1.schema.json"
+            - name: BRIDGE_NATS_SUBJECT
+              value: {{ .Values.bridge.natsSubject | quote }}
+            - name: BRIDGE_NATS_MODE
+              value: {{ .Values.bridge.natsMode | quote }}
+            - name: BRIDGE_MAX_BODY_BYTES
+              value: {{ .Values.bridge.maxBodyBytes | quote }}
+            - name: BRIDGE_RATE_LIMIT_PER_MIN
+              value: {{ .Values.bridge.rateLimitPerMin | quote }}
+            - name: BRIDGE_LOG_PUBLISH
+              value: {{ .Values.bridge.logPublish | quote }}
+            {{- if .Values.bridge.natsUrl }}
+            - name: BRIDGE_NATS_URL
+              value: {{ .Values.bridge.natsUrl | quote }}
+            {{- end }}
+            {{- if and .Values.bridge.internalSecret (not .Values.bridge.internalSecretExistingSecret) }}
+            - name: BRIDGE_INTERNAL_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "pilox-transport-bridge.fullname" . }}-bridge-internal
+                  key: BRIDGE_INTERNAL_SECRET
+            {{- else if .Values.bridge.internalSecretExistingSecret }}
+            - name: BRIDGE_INTERNAL_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.bridge.internalSecretExistingSecret | quote }}
+                  key: {{ .Values.bridge.internalSecretExistingKey | quote }}
+            {{- end }}
+{{- include "pilox-transport-bridge.natsTlsEnv" (dict "root" $ "component" "bridge") | nindent 12 }}
+            {{- if .Values.bridge.metricsAuthSecret }}
+            - name: BRIDGE_METRICS_AUTH_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "pilox-transport-bridge.fullname" . }}-bridge-metrics
+                  key: bearer
+            {{- end }}
+          {{- if and .Values.bridge.natsTls.enabled .Values.bridge.natsTls.secretName }}
+          volumeMounts:
+{{- include "pilox-transport-bridge.natsTlsVolumeMount" (dict "root" $ "component" "bridge") | nindent 12 }}
+          {{- end }}
+          readinessProbe:
+            httpGet:
+              path: /v1/health
+              port: http
+            initialDelaySeconds: 3
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /v1/health
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 20
+          resources:
+            {{- toYaml .Values.bridge.resources | nindent 12 }}
+{{- end }}

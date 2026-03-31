@@ -1,0 +1,50 @@
+# Example only — adapt namespace, image, DNS names, and Secret before apply.
+# JetStream: NATS with -js + stream covering pilox.mesh.wan (see docs/deploy/nats-jetstream-pilox-mesh-wan.example.md).
+# Core (no stream): use p3-bridge-nats-smoke-job-core.example.yaml instead.
+# Periodic runs: p3-bridge-nats-smoke-cronjob.example.yaml (reuse this Secret name).
+# Requires: NATS reachable from the cluster; Helm release of pilox-transport-bridge (bridge Deployment + Service).
+# Image must include scripts/ (see services/transport-bridge/Dockerfile).
+#
+#   kubectl apply -f p3-bridge-nats-smoke-job.example.yaml
+#
+apiVersion: v1
+kind: Secret
+metadata:
+  name: p3-bridge-nats-smoke
+  namespace: default
+type: Opaque
+stringData:
+  # Must match BRIDGE_INTERNAL_SECRET on the bridge Deployment
+  BRIDGE_INTERNAL_SECRET: "replace-with-same-secret-as-bridge-min-32-chars"
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: p3-bridge-nats-smoke
+  namespace: default
+spec:
+  ttlSecondsAfterFinished: 600
+  backoffLimit: 2
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: smoke
+          image: pilox-transport-bridge:local
+          imagePullPolicy: IfNotPresent
+          command: ["node", "scripts/p3-nats-smoke.mjs"]
+          env:
+            # Kubernetes DNS: <release>-bridge.<namespace>.svc.cluster.local
+            - name: BRIDGE_HTTP_URL
+              value: "http://pilox-transport-bridge-bridge.default.svc.cluster.local:4081"
+            - name: BRIDGE_NATS_URL
+              value: "nats://nats.default.svc.cluster.local:4222"
+            - name: BRIDGE_NATS_MODE
+              value: "jetstream"
+            - name: SMOKE_NATS_MODE
+              value: "jetstream"
+            - name: BRIDGE_NATS_SUBJECT
+              value: "pilox.mesh.wan"
+          envFrom:
+            - secretRef:
+                name: p3-bridge-nats-smoke

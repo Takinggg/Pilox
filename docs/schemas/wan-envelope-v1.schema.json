@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/hive/schemas/wan-envelope-v1",
+  "title": "wan-envelope-v1",
+  "description": "Logical envelope for P3 WAN transport (HTTP bridge → NATS JetStream, etc.). See docs/MESH_PLANETARY_P3_TRANSPORT.md and docs/openapi/transport-bridge-v1.yaml.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["v", "correlationId", "sourceOrigin"],
+  "properties": {
+    "schema": {
+      "const": "wan-envelope-v1",
+      "description": "Optional explicit type tag for consumers and logs."
+    },
+    "v": {
+      "type": "integer",
+      "const": 1
+    },
+    "correlationId": {
+      "type": "string",
+      "minLength": 8,
+      "maxLength": 256
+    },
+    "sourceOrigin": {
+      "type": "string",
+      "format": "uri"
+    },
+    "targetOrigin": {
+      "type": "string",
+      "format": "uri"
+    },
+    "targetHandle": {
+      "type": "string",
+      "description": "Optional P1 registry handle when target origin is unknown."
+    },
+    "payload": {
+      "type": "object",
+      "additionalProperties": true,
+      "description": "Opaque or structured payload; bounded size is policy on publishers."
+    }
+  }
+}

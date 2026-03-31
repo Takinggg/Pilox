@@ -1,0 +1,35 @@
+[Unit]
+Description=Hive Redis Cache (Docker)
+Documentation=https://hive-os.dev/docs
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=simple
+Restart=always
+RestartSec=5
+
+EnvironmentFile=-/etc/hive/hive.env
+
+ExecStartPre=-/usr/bin/docker rm -f hive-redis
+ExecStart=/usr/bin/docker run \
+    --name hive-redis \
+    --network hive-network \
+    -v hive-redis-data:/data \
+    -p 127.0.0.1:6379:6379 \
+    --health-cmd="redis-cli -a ${REDIS_PASSWORD} ping" \
+    --health-interval=10s \
+    --health-timeout=5s \
+    --health-retries=5 \
+    redis:7-bookworm \
+    redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru --requirepass ${REDIS_PASSWORD}
+
+ExecStop=/usr/bin/docker stop -t 10 hive-redis
+ExecStopPost=-/usr/bin/docker rm -f hive-redis
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=hive-redis
+
+[Install]
+WantedBy=multi-user.target

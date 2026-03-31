@@ -1,0 +1,55 @@
+# OpenTelemetry Collector (contrib) — stack locale Hive (profil Docker `otel`).
+# OTLP entrant :4318 → spanmetrics (namespace hive_span) + export traces vers Tempo.
+# Métriques Prometheus scrape :8889
+
+receivers:
+  otlp:
+    protocols:
+      http:
+        endpoint: 0.0.0.0:4318
+      grpc:
+        endpoint: 0.0.0.0:4317
+
+processors:
+  batch: {}
+
+connectors:
+  spanmetrics:
+    namespace: hive_span
+    histogram:
+      explicit:
+        buckets:
+          [
+            2ms, 4ms, 8ms, 16ms, 32ms, 64ms, 128ms, 256ms, 512ms,
+            1s, 2s, 5s, 10s, 30s,
+          ]
+    dimensions:
+      - name: http.route
+      - name: http.request.method
+      - name: http.response.status_code
+
+exporters:
+  prometheus:
+    endpoint: 0.0.0.0:8889
+    resource_to_telemetry_conversion:
+      enabled: true
+  otlphttp/traces:
+    endpoint: http://tempo:4318
+    tls:
+      insecure: true
+
+extensions:
+  health_check:
+    endpoint: 0.0.0.0:13133
+
+service:
+  extensions: [health_check]
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [spanmetrics, otlphttp/traces]
+    metrics:
+      receivers: [otlp, spanmetrics]
+      processors: [batch]
+      exporters: [prometheus]

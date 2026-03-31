@@ -1,0 +1,13 @@
+{
+  "name": "hive-public-registry-mirror",
+  "private": true,
+  "type": "module",
+  "description": "Public mirror of Hive Registry records — validated in CI",
+  "scripts": {
+    "validate": "node scripts/validate-records.mjs"
+  },
+  "dependencies": {
+    "ajv": "^8.17.1",
+    "ajv-formats": "^3.0.1"
+  }
+}

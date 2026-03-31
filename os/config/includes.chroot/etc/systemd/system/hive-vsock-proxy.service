@@ -1,0 +1,30 @@
+[Unit]
+Description=Hive vsock proxy (VM agents → inference API)
+Documentation=https://hive-os.dev/docs
+After=hive-inference.service
+Wants=hive-inference.service
+
+[Service]
+Type=simple
+User=hive-inference
+Group=hive-inference
+ExecStart=/usr/bin/python3 /opt/hive/scripts/hive-vsock-proxy.py
+Restart=always
+RestartSec=2
+EnvironmentFile=-/etc/hive/hive.env
+Environment=REDIS_URL=redis://localhost:6379
+Environment=INFERENCE_BACKEND=ollama
+
+# Security hardening
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=hive-vsock-proxy
+
+[Install]
+WantedBy=multi-user.target

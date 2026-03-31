@@ -1,0 +1,1 @@
+{"version":3,"file":"user.d.ts","sourceRoot":"","sources":["../../../../src/core/server/authentication/user.ts"],"names":[],"mappings":"AAAA;;GAEG;AACH,MAAM,WAAW,IAAI;IACnB;;OAEG;IACH,IAAI,eAAe,IAAI,OAAO,CAAC;IAE/B;;OAEG;IACH,IAAI,QAAQ,IAAI,MAAM,CAAC;CACxB;AAED;;GAEG;AACH,qBAAa,mBAAoB,YAAW,IAAI;IAC9C,IAAI,eAAe,IAAI,OAAO,CAE7B;IAED,IAAI,QAAQ,IAAI,MAAM,CAErB;CACF"}

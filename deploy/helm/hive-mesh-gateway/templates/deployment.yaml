@@ -1,0 +1,104 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "pilox-mesh-gateway.fullname" . }}
+  labels:
+    {{- include "pilox-mesh-gateway.labels" . | nindent 4 }}
+spec:
+  {{- if .Values.autoscaling.enabled }}
+  replicas: {{ .Values.autoscaling.minReplicas }}
+  {{- else }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ include "pilox-mesh-gateway.name" . }}
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ include "pilox-mesh-gateway.name" . }}
+        app.kubernetes.io/instance: {{ .Release.Name }}
+        {{- with .Values.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      containers:
+        - name: gateway
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 4080
+              protocol: TCP
+          env:
+            - name: PORT
+              value: "4080"
+            - name: GATEWAY_UPSTREAM_BASE
+              value: {{ .Values.gateway.upstreamBase | quote }}
+            - name: GATEWAY_JSONRPC_PATH
+              value: {{ .Values.gateway.jsonrpcPath | quote }}
+            - name: GATEWAY_RATE_LIMIT_PER_MIN
+              value: {{ .Values.gateway.rateLimitPerMin | quote }}
+            {{- if .Values.gateway.rateLimitRedisUrl }}
+            - name: GATEWAY_RATE_LIMIT_REDIS_URL
+              value: {{ .Values.gateway.rateLimitRedisUrl | quote }}
+            {{- end }}
+            - name: GATEWAY_MAX_BODY_BYTES
+              value: {{ .Values.gateway.maxBodyBytes | quote }}
+            - name: GATEWAY_UPSTREAM_FORWARD_FOR
+              value: {{ .Values.gateway.upstreamForwardFor | quote }}
+            - name: GATEWAY_UPSTREAM_TIMEOUT_MS
+              value: {{ .Values.gateway.upstreamTimeoutMs | quote }}
+            {{- if .Values.gateway.blockUserAgents }}
+            - name: GATEWAY_BLOCK_USER_AGENTS
+              value: {{ .Values.gateway.blockUserAgents | quote }}
+            {{- end }}
+            {{- if .Values.gateway.tlsCertPath }}
+            - name: GATEWAY_TLS_CERT_PATH
+              value: {{ .Values.gateway.tlsCertPath | quote }}
+            {{- end }}
+            {{- if .Values.gateway.tlsKeyPath }}
+            - name: GATEWAY_TLS_KEY_PATH
+              value: {{ .Values.gateway.tlsKeyPath | quote }}
+            {{- end }}
+            {{- if .Values.gateway.mtlsCaPath }}
+            - name: GATEWAY_MTLS_CA_PATH
+              value: {{ .Values.gateway.mtlsCaPath | quote }}
+            {{- end }}
+            - name: GATEWAY_SECURITY_HEADERS
+              value: {{ .Values.gateway.securityHeaders | quote }}
+            {{- if .Values.gateway.metricsAuthSecret }}
+            - name: GATEWAY_METRICS_AUTH_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "pilox-mesh-gateway.fullname" . }}-metrics
+                  key: bearer
+            {{- end }}
+            - name: GATEWAY_MAX_URL_BYTES
+              value: {{ .Values.gateway.maxUrlBytes | quote }}
+            - name: GATEWAY_REQUEST_TIMEOUT_MS
+              value: {{ .Values.gateway.requestTimeoutMs | quote }}
+            {{- if .Values.gateway.upstreamAuthSecret }}
+            - name: GATEWAY_UPSTREAM_AUTH_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "pilox-mesh-gateway.fullname" . }}-upstream
+                  key: auth-secret
+            {{- end }}
+          {{- with .Values.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

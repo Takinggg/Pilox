@@ -1,0 +1,42 @@
+{{- if and .Values.bridge.enabled .Values.bridge.ingress.enabled -}}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "pilox-transport-bridge.fullname" . }}-bridge
+  labels:
+    {{- include "pilox-transport-bridge.labels" . | nindent 4 }}
+    app.kubernetes.io/component: bridge
+  {{- with .Values.bridge.ingress.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- with .Values.bridge.ingress.className }}
+  ingressClassName: {{ . }}
+  {{- end }}
+  {{- if .Values.bridge.ingress.tls }}
+  tls:
+    {{- range .Values.bridge.ingress.tls }}
+    - hosts:
+        {{- range .hosts }}
+        - {{ . | quote }}
+        {{- end }}
+      secretName: {{ .secretName }}
+    {{- end }}
+  {{- end }}
+  rules:
+    {{- range .Values.bridge.ingress.hosts }}
+    - host: {{ .host | quote }}
+      http:
+        paths:
+          {{- range .paths }}
+          - path: {{ .path }}
+            pathType: {{ .pathType }}
+            backend:
+              service:
+                name: {{ include "pilox-transport-bridge.fullname" $ }}-bridge
+                port:
+                  number: {{ $.Values.bridge.service.port }}
+          {{- end }}
+    {{- end }}
+{{- end }}

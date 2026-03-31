@@ -1,0 +1,69 @@
+{{- if and .Values.monitoring.enabled .Values.monitoring.prometheusRule.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: {{ include "pilox-app.fullname" . }}
+  labels:
+    {{- include "pilox-app.labels" . | nindent 4 }}
+    prometheus: k8s
+    role: alert-rules
+    {{- with .Values.monitoring.prometheusRule.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- with .Values.monitoring.prometheusRule.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  groups:
+    - name: {{ .Chart.Name }}.alerts
+      rules:
+        - alert: PiloxAppDown
+          expr: up{job="{{ .Chart.Name }}"} == 0
+          for: 1m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Pilox App is down"
+            description: "Pilox App has been down for more than 1 minute."
+        - alert: PiloxAppHighMemory
+          expr: (container_memory_working_set_bytes{job="{{ .Chart.Name }}"} / container_spec_memory_limit_bytes{job="{{ .Chart.Name }}"}) > 0.85
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Pilox App high memory usage"
+            description: "Memory usage is above 85% for more than 5 minutes."
+        - alert: PiloxAppHighCPU
+          expr: (rate(container_cpu_usage_seconds_total{job="{{ .Chart.Name }}"}[5m]) / container_spec_cpu_quota{job="{{ .Chart.Name }}"}) > 0.85
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Pilox App high CPU usage"
+            description: "CPU usage is above 85% for more than 5 minutes."
+        - alert: PiloxAppRestarting
+          expr: increase(kube_pod_container_status_restarts_total{job="{{ .Chart.Name }}"}[1h]) > 3
+          for: 1m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Pilox App restarting frequently"
+            description: 'Pilox App has restarted {{ "{{ $value }}" }} times in the last hour.'
+        - alert: PiloxAppHighLatency
+          expr: histogram_quantile(0.99, rate(http_request_duration_seconds_bucket{job="{{ .Chart.Name }}"}[5m])) > 5
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Pilox App high latency"
+            description: "99th percentile latency is above 5 seconds."
+        - alert: PiloxAppErrorRate
+          expr: rate(http_requests_total{job="{{ .Chart.Name }}", status=~"5.."}[5m]) / rate(http_requests_total{job="{{ .Chart.Name }}"}[5m]) > 0.05
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Pilox App high error rate"
+            description: "Error rate is above 5% for more than 5 minutes."
+{{- end }}

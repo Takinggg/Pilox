@@ -1,0 +1,18 @@
+{
+  "source": "https://api.n8n.io",
+  "gallery_url": "https://n8n.io/workflows/",
+  "requested_max": 450,
+  "downloaded_unique_ids": 900,
+  "files_written": 450,
+  "errors": [
+    {
+      "id": 6281,
+      "error": "404 workflow not found"
+    },
+    {
+      "id": 4912,
+      "error": "404 workflow not found"
+    }
+  ],
+  "note": "Community templates; verify license/terms before redistributing or training commercial models."
+}

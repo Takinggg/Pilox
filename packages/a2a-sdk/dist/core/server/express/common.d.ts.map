@@ -1,0 +1,1 @@
+{"version":3,"file":"common.d.ts","sourceRoot":"","sources":["../../../../src/core/server/express/common.ts"],"names":[],"mappings":"AAAA,OAAO,EAAE,OAAO,EAAE,MAAM,SAAS,CAAC;AAClC,OAAO,EAAE,mBAAmB,EAAE,IAAI,EAAE,MAAM,2BAA2B,CAAC;AAEtE,MAAM,MAAM,WAAW,GAAG,CAAC,GAAG,EAAE,OAAO,KAAK,OAAO,CAAC,IAAI,CAAC,CAAC;AAE1D,eAAO,MAAM,WAAW;;CAEvB,CAAC"}

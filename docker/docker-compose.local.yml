@@ -1,0 +1,147 @@
+# Local development deployment — Docker Desktop
+# Uses existing pilox-postgres on pilox-network: Redis + Pilox app + Planetary mesh (NATS, registry,
+# gateway, bridge, subscriber) so “planetary” is available without extra profiles.
+# Usage: docker compose -f docker/docker-compose.local.yml up -d --build
+#
+# Gateway proxies A2A to the in-compose app: GATEWAY_UPSTREAM_BASE defaults to http://pilox-app:3000.
+
+services:
+  nats:
+    image: nats:2.10-alpine
+    restart: unless-stopped
+    command: ["-js", "-m", "8222"]
+    ports:
+      - "4222:4222"
+      - "8222:8222"
+    networks:
+      - pilox-network
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    volumes:
+      - pilox_redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - pilox-network
+
+  pilox-app:
+    build:
+      context: ..
+      dockerfile: app/Dockerfile
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      # Must match app/docker-compose.yml postgres (same POSTGRES_PASSWORD default or your .env).
+      DATABASE_URL: postgresql://pilox:${POSTGRES_PASSWORD:-PiloxLocalDockerPg2026xStrong}@pilox-postgres:5432/pilox
+      REDIS_URL: redis://redis:6379
+      AUTH_URL: http://localhost:3000
+      AUTH_SECRET: ${AUTH_SECRET}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-admin}
+      DOCKER_HOST: /var/run/docker.sock
+      OLLAMA_URL: http://host.docker.internal:11434
+      # PEFT adapter baked into image (npm run dataset:fetch-modal-lora before docker build)
+      PILOX_COPILOT_LORA_PATH: /app/models/hive-copilot-lora/lora-hive-copilot
+      NODE_ENV: production
+      # Marketplace hub (fleet default) + optional secret or open-registration token file
+      PILOX_MARKETPLACE_URL: ${PILOX_MARKETPLACE_URL:-}
+      PILOX_MARKETPLACE_HUB_URL: ${PILOX_MARKETPLACE_HUB_URL:-}
+      PILOX_MARKETPLACE_NODE_SECRET: ${PILOX_MARKETPLACE_NODE_SECRET}
+      PILOX_MARKETPLACE_NODE_STATE_FILE: ${PILOX_MARKETPLACE_NODE_STATE_FILE:-/data/pilox/marketplace-node.json}
+      PILOX_NODE_NAME: ${PILOX_NODE_NAME:-pilox-local}
+      PILOX_NODE_REGION: ${PILOX_NODE_REGION:-local}
+      # Observability — auto-wired to Docker otel stack
+      PROMETHEUS_OBSERVABILITY_URL: ${PROMETHEUS_OBSERVABILITY_URL:-}
+      TEMPO_OBSERVABILITY_URL: ${TEMPO_OBSERVABILITY_URL:-}
+    volumes:
+      - //var/run/docker.sock:/var/run/docker.sock
+      - pilox_marketplace_node_state:/data/pilox
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3000/api/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    networks:
+      - pilox-network
+
+  planetary-registry:
+    build:
+      context: ..
+      dockerfile: services/registry/Dockerfile
+    restart: unless-stopped
+    ports:
+      - "4077:4077"
+    networks:
+      - pilox-network
+
+  planetary-gateway:
+    build:
+      context: ..
+      dockerfile: services/gateway/Dockerfile
+    restart: unless-stopped
+    ports:
+      - "4080:4080"
+    environment:
+      GATEWAY_UPSTREAM_BASE: ${PLANETARY_GATEWAY_UPSTREAM_BASE:-http://pilox-app:3000}
+      GATEWAY_JSONRPC_PATH: ${PLANETARY_GATEWAY_JSONRPC_PATH:-/api/a2a/jsonrpc/public}
+    depends_on:
+      nats:
+        condition: service_started
+      pilox-app:
+        condition: service_healthy
+    networks:
+      - pilox-network
+
+  planetary-bridge:
+    build:
+      context: ..
+      dockerfile: services/transport-bridge/Dockerfile
+    restart: unless-stopped
+    ports:
+      - "4081:4081"
+    environment:
+      BRIDGE_NATS_URL: nats://nats:4222
+      BRIDGE_NATS_SUBJECT: ${PLANETARY_BRIDGE_SUBJECT:-pilox.mesh.wan}
+      BRIDGE_NATS_MODE: ${PLANETARY_BRIDGE_NATS_MODE:-core}
+      BRIDGE_INTERNAL_SECRET: ${PLANETARY_BRIDGE_INTERNAL_SECRET:-local-planetary-bridge-secret-minimum-32chars}
+    depends_on:
+      nats:
+        condition: service_started
+    networks:
+      - pilox-network
+
+  planetary-subscriber:
+    build:
+      context: ..
+      dockerfile: services/transport-bridge/Dockerfile
+    restart: unless-stopped
+    command: ["node", "src/subscriber.mjs"]
+    environment:
+      SUBSCRIBER_NATS_URL: nats://nats:4222
+      SUBSCRIBER_NATS_SUBJECT: ${PLANETARY_BRIDGE_SUBJECT:-pilox.mesh.wan}
+      SUBSCRIBER_NATS_MODE: ${PLANETARY_BRIDGE_NATS_MODE:-core}
+    depends_on:
+      nats:
+        condition: service_started
+    networks:
+      - pilox-network
+
+volumes:
+  pilox_redis_data:
+  pilox_marketplace_node_state:
+
+networks:
+  pilox-network:
+    external: true

@@ -1,0 +1,78 @@
+# Planetary mesh dev — NATS + registry / gateway / bridge / subscriber (default stack).
+#
+# From repo root:  docker compose up -d --build
+# Gateway → Hive on the host: GATEWAY_UPSTREAM_BASE (default http://host.docker.internal:3000).
+# Docker Desktop “all-in-one” stack: docker/docker-compose.local.yml (gateway → http://hive-app:3000).
+#
+# Optional libp2p DHT lab node: --profile planetary-dht (port 4092)
+#
+# Bridge auth: override PLANETARY_BRIDGE_INTERNAL_SECRET in production (≥ 32 chars). Default is lab-only.
+# Gateway → Hive on the host: GATEWAY_UPSTREAM_BASE=http://host.docker.internal:3000 (Docker Desktop;
+# on Linux see docs/MESH_PLANETARY_DEV_STACK.md).
+# Full operator guide: docs/MESH_WAN_COMPLETE_DEPLOYMENT.md
+
+services:
+  nats:
+    image: nats:2.10-alpine
+    command: ["-js", "-m", "8222"]
+    ports:
+      - "4222:4222"
+      - "8222:8222"
+
+  planetary-registry:
+    build:
+      context: .
+      dockerfile: services/registry/Dockerfile
+    ports:
+      - "4077:4077"
+
+  planetary-gateway:
+    build:
+      context: .
+      dockerfile: services/gateway/Dockerfile
+    ports:
+      - "4080:4080"
+    environment:
+      GATEWAY_UPSTREAM_BASE: ${PLANETARY_GATEWAY_UPSTREAM_BASE:-http://host.docker.internal:3000}
+      GATEWAY_JSONRPC_PATH: ${PLANETARY_GATEWAY_JSONRPC_PATH:-/api/a2a/jsonrpc/public}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  planetary-bridge:
+    build:
+      context: .
+      dockerfile: services/transport-bridge/Dockerfile
+    ports:
+      - "4081:4081"
+    environment:
+      BRIDGE_NATS_URL: nats://nats:4222
+      BRIDGE_NATS_SUBJECT: ${PLANETARY_BRIDGE_SUBJECT:-hive.mesh.wan}
+      BRIDGE_NATS_MODE: ${PLANETARY_BRIDGE_NATS_MODE:-core}
+      # Required for real networks when NATS is set; override in production (≥ 32 chars).
+      BRIDGE_INTERNAL_SECRET: ${PLANETARY_BRIDGE_INTERNAL_SECRET:-local-planetary-bridge-secret-minimum-32chars}
+    depends_on:
+      - nats
+
+  planetary-dht:
+    profiles: ["planetary-dht"]
+    build:
+      context: .
+      dockerfile: services/libp2p-dht-node/Dockerfile
+    ports:
+      - "4092:4092"
+    environment:
+      LIBP2P_HEALTH_PORT: "4092"
+      LIBP2P_HEALTH_HOST: "0.0.0.0"
+
+  # Consumes NATS; optional Hive loop via HIVE_WAN_INGEST_URL + HIVE_WAN_INGEST_TOKEN (see subscriber.mjs).
+  planetary-subscriber:
+    build:
+      context: .
+      dockerfile: services/transport-bridge/Dockerfile
+    command: ["node", "src/subscriber.mjs"]
+    environment:
+      SUBSCRIBER_NATS_URL: nats://nats:4222
+      SUBSCRIBER_NATS_SUBJECT: ${PLANETARY_BRIDGE_SUBJECT:-hive.mesh.wan}
+      SUBSCRIBER_NATS_MODE: ${PLANETARY_BRIDGE_NATS_MODE:-core}
+    depends_on:
+      - nats

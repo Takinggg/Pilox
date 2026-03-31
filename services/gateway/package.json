@@ -1,0 +1,17 @@
+{
+  "name": "@pilox/mesh-gateway-stub",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Minimal P2 ingress stub: health + JSON-RPC reverse proxy toward Pilox. See docs/openapi/gateway-v1.yaml.",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "scripts": {
+    "start": "node src/server.mjs",
+    "check": "node --check src/server.mjs && node --check src/gateway-bearer.mjs && node --check src/gateway-metrics.mjs && node --check src/gateway-redis-rate-limit.mjs"
+  },
+  "dependencies": {
+    "ioredis": "^5.10.1"
+  }
+}

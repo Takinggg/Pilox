@@ -1,0 +1,19 @@
+[Unit]
+Description=Hive OS First Boot Setup
+Documentation=https://hive-os.dev/docs
+After=network-online.target docker.service
+Wants=network-online.target
+Requires=docker.service
+ConditionPathExists=!/etc/hive/.initialized
+
+[Service]
+Type=oneshot
+RemainAfterExit=true
+ExecStart=/opt/hive/scripts/first-boot.sh
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=hive-setup
+
+[Install]
+WantedBy=multi-user.target

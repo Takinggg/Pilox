@@ -1,0 +1,36 @@
+{{- if .Values.ingressRoute.enabled }}
+apiVersion: traefik.containo.us/v1alpha1
+kind: IngressRoute
+metadata:
+  name: {{ include "pilox-app.fullname" . }}
+  labels:
+    {{- include "pilox-app.labels" . | nindent 4 }}
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - match: Host(`{{ first .Values.ingress.hosts }}`)
+      kind: Rule
+      services:
+        - name: {{ include "pilox-app.fullname" . }}
+          port: {{ .Values.service.port }}
+      {{- if .Values.ingressRoute.middlewares }}
+      middlewares:
+        {{- range .Values.ingressRoute.middlewares }}
+        - name: {{ .name }}
+          namespace: {{ .namespace }}
+        {{- end }}
+      {{- end }}
+  {{- if .Values.ingress.tls }}
+  tls:
+    secretName: {{ first .Values.ingress.tls }}.secretName
+    domains:
+      {{- range .Values.ingress.tls }}
+      - main: {{ first .hosts }}
+        sans:
+          {{- range rest .hosts }}
+          - {{ . }}
+          {{- end }}
+      {{- end }}
+  {{- end }}
+{{- end }}

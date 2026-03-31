@@ -1,0 +1,14 @@
+[Unit]
+Description=Hive VM Network Bridge
+After=network-online.target
+Wants=network-online.target
+Before=hive-app.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=true
+ExecStart=/opt/hive/scripts/setup-vmnet.sh
+ExecStop=/opt/hive/scripts/teardown-vmnet.sh
+
+[Install]
+WantedBy=multi-user.target

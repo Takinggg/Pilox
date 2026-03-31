@@ -1,0 +1,173 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/hive/schemas/hive-registry-record-v1",
+  "title": "hive-registry-record-v1",
+  "description": "Public registry record for planetary agent discovery (P1). See docs/MESH_PLANETARY_P1_GLOBAL_DIRECTORY.md. Optional marketplace and publish-readiness fields: buyerInputs, publishAttestation, documentationUrl, pricing.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "handle", "updatedAt", "agentCardUrl"],
+  "$defs": {
+    "pricingFields": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "currency": { "type": "string", "maxLength": 16 },
+        "label": { "type": "string", "maxLength": 512 },
+        "inputTokensPerMillion": { "type": "number", "minimum": 0 },
+        "outputTokensPerMillion": { "type": "number", "minimum": 0 },
+        "notes": { "type": "string", "maxLength": 4000 }
+      }
+    },
+    "publishAttestation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["confirmedAt", "confirmedBuyerConfiguration"],
+      "properties": {
+        "confirmedAt": { "type": "string", "format": "date-time" },
+        "confirmedBuyerConfiguration": { "type": "boolean", "const": true },
+        "toolingVersion": { "type": "string", "maxLength": 64 },
+        "hmacSha256Hex": {
+          "type": "string",
+          "pattern": "^[0-9a-fA-F]{64}$",
+          "description": "HMAC-SHA256(hex) over stableStringify({ handle, updatedAt, buyerInputs }) when REGISTRY_PUBLISH_ATTESTATION_HMAC_SECRET is set."
+        }
+      }
+    }
+  },
+  "properties": {
+    "schema": {
+      "const": "hive-registry-record-v1"
+    },
+    "handle": {
+      "type": "string",
+      "minLength": 8,
+      "maxLength": 512,
+      "description": "Stable identifier (URN, DID fragment, or registrar-defined)."
+    },
+    "updatedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "validUntil": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Optional soft expiry hint for clients (revocation model TBD)."
+    },
+    "ttlSecondsRecommended": {
+      "type": "integer",
+      "minimum": 60,
+      "maximum": 8640000
+    },
+    "agentCardUrl": {
+      "type": "string",
+      "format": "uri"
+    },
+    "controllerDid": {
+      "type": "string",
+      "minLength": 10,
+      "maxLength": 2048,
+      "pattern": "^did:[a-z0-9]+:.+",
+      "description": "Optional DID of the controller (W3C DID Core); VC issuance/verification remains operator-specific."
+    },
+    "didDocumentUrl": {
+      "type": "string",
+      "format": "uri",
+      "description": "Optional HTTPS URL of a DID document or resolution endpoint."
+    },
+    "meshDescriptorUrl": {
+      "type": "string",
+      "format": "uri",
+      "description": "Typically /.well-known/hive-mesh.json on the same origin as Agent Card."
+    },
+    "capabilities": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z0-9][a-z0-9._-]*$"
+      },
+      "maxItems": 64
+    },
+    "documentationUrl": {
+      "type": "string",
+      "format": "uri",
+      "description": "Human-readable docs for the agent (marketplace / discovery)."
+    },
+    "sourceUrl": {
+      "type": "string",
+      "format": "uri",
+      "description": "Source repository or project URL."
+    },
+    "version": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "publishedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "inputModalities": {
+      "type": "array",
+      "maxItems": 32,
+      "items": { "type": "string", "minLength": 1, "maxLength": 64 }
+    },
+    "outputModalities": {
+      "type": "array",
+      "maxItems": 32,
+      "items": { "type": "string", "minLength": 1, "maxLength": 64 }
+    },
+    "pricing": {
+      "$ref": "#/$defs/pricingFields",
+      "description": "Display-only pricing hint for catalogs."
+    },
+    "buyerInputs": {
+      "type": "array",
+      "maxItems": 64,
+      "description": "What deployers must configure (env, secrets, URLs, etc.). Merged from aliases before validation. Item schema: hive-buyer-input-item-v1 (see hive-buyer-input-item.v1.schema.json).",
+      "items": {
+        "$ref": "https://github.com/hive/schemas/hive-buyer-input-item-v1"
+      }
+    },
+    "publishAttestation": {
+      "$ref": "#/$defs/publishAttestation",
+      "description": "Publisher confirms buyer configuration was reviewed (required when REGISTRY_PUBLISH_REQUIRE_ATTESTATION=1 and readiness is enforced)."
+    },
+    "publicKeys": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "ed25519": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["kid", "publicKeyHex"],
+            "properties": {
+              "kid": { "type": "string", "minLength": 1, "maxLength": 128 },
+              "publicKeyHex": {
+                "type": "string",
+                "pattern": "^[0-9a-fA-F]{64}$"
+              }
+            }
+          }
+        }
+      }
+    },
+    "proof": {
+      "type": "object",
+      "additionalProperties": true,
+      "description": "Attestation or signature bundle; shape varies by trust model.",
+      "properties": {
+        "type": { "type": "string" },
+        "signer": { "type": "string", "format": "uri" },
+        "signingKid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "description": "Must match one of publicKeys.ed25519[].kid when type is hive-registry-record-ed25519-v1."
+        },
+        "sigHex": { "type": "string", "pattern": "^[0-9a-fA-F]{128}$" }
+      }
+    }
+  }
+}

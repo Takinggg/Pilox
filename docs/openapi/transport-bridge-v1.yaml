@@ -1,0 +1,136 @@
+openapi: 3.1.0
+info:
+  title: Hive mesh WAN transport bridge — draft
+  version: 0.1.0
+  description: |
+    Optional HTTP → message bus hop for P3 (e.g. NATS JetStream publish).
+    Implementations may live beside the P2 gateway or as a sidecar.
+    Request body JSON Schema: [`../schemas/wan-envelope-v1.schema.json`](../schemas/wan-envelope-v1.schema.json).
+  externalDocs:
+    url: ../MESH_PLANETARY_P3_TRANSPORT.md
+    description: ADR P3
+
+servers:
+  - url: https://bridge-internal.example
+    description: Internal only (mTLS / private network)
+
+paths:
+  /v1/health:
+    get:
+      operationId: transportBridgeHealth
+      summary: Liveness
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok, role]
+                properties:
+                  ok:
+                    type: boolean
+                    const: true
+                  role:
+                    type: string
+                    const: hive-mesh-transport-bridge
+                  envelopeSchema:
+                    type: string
+                    description: JSON Schema `$id` or label for the publish body validator (reference stub)
+                  nats:
+                    description: Optional — present in reference stub when exposing bus config
+                    type: object
+                    required: [enabled, mode]
+                    properties:
+                      enabled:
+                        type: boolean
+                      mode:
+                        type: string
+                        description: "`off` | `jetstream` | `core`"
+                      subject:
+                        type: string
+                        description: Publish subject when NATS is enabled
+                      tls:
+                        type: boolean
+                        description: |
+                          When `enabled` is true, whether NATS client TLS options are configured
+                          (`BRIDGE_NATS_TLS*` / mounted PEM files). Omitted or false when NATS is off.
+                  rateLimitPublishPerMin:
+                    type: integer
+                  maxUrlBytes:
+                    type: integer
+                  requestTimeoutMs:
+                    type: integer
+                  internalAuthRequired:
+                    type: boolean
+                  metricsPath:
+                    type: string
+                    description: Prometheus scrape path (reference stub)
+                  metricsAuthRequired:
+                    type: boolean
+                    description: >-
+                      When true, GET /v1/metrics requires an Authorization Bearer token.
+
+  /v1/metrics:
+    get:
+      operationId: transportBridgeMetrics
+      summary: Prometheus text metrics (reference stub)
+      description: |
+        Optional Bearer when BRIDGE_METRICS_AUTH_SECRET is set.
+      responses:
+        "200":
+          description: Prometheus exposition format
+          content:
+            text/plain:
+              schema:
+                type: string
+        "401":
+          description: Missing or invalid Bearer when metrics auth is enabled
+
+  /v1/publish:
+    post:
+      operationId: transportBridgePublish
+      summary: Accept a WAN envelope and publish to the configured backend (e.g. JetStream)
+      description: |
+        Requires internal auth when `BRIDGE_INTERNAL_SECRET` is set (Bearer, timing-safe compare). Optional per-IP rate limit (`BRIDGE_RATE_LIMIT_PER_MIN`).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "../schemas/wan-envelope-v1.schema.json"
+      responses:
+        "202":
+          description: Accepted for delivery (async)
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [accepted, correlationId]
+                properties:
+                  accepted:
+                    type: boolean
+                    const: true
+                  correlationId:
+                    type: string
+        "401":
+          description: Missing or invalid internal credentials
+        "414":
+          description: Request-URI too long (`BRIDGE_MAX_URL_BYTES`)
+        "429":
+          description: Publish rate limit exceeded (`BRIDGE_RATE_LIMIT_PER_MIN`)
+        "413":
+          description: Payload too large
+        "503":
+          description: Backend bus unavailable (e.g. NATS connection or JetStream publish failed)
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [error, correlationId]
+                properties:
+                  error:
+                    type: string
+                    example: nats_unavailable
+                  correlationId:
+                    type: string

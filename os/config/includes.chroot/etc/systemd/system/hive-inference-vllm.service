@@ -1,0 +1,40 @@
+[Unit]
+Description=Hive vLLM inference service (GPU shared across all agents)
+Documentation=https://hive-os.dev/docs
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=hive-inference
+Group=hive-inference
+SupplementaryGroups=video render
+
+EnvironmentFile=-/etc/hive/hive.env
+
+ExecStart=/usr/local/bin/python3 -m vllm.entrypoints.openai.api_server \
+  --model /var/lib/hive/models/default \
+  --host 127.0.0.1 \
+  --port 11434 \
+  --enable-prefix-caching \
+  --enable-chunked-prefill \
+  --max-num-seqs 64 \
+  --gpu-memory-utilization 0.90
+
+Restart=always
+RestartSec=5
+
+# Security hardening
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/var/lib/hive/models /tmp
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=hive-inference-vllm
+
+[Install]
+WantedBy=multi-user.target

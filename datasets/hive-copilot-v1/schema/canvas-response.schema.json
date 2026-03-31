@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hive.local/schemas/canvas-response-v1.json",
+  "title": "HiveCopilotCanvasResponse",
+  "description": "Optional structured tail for assistant replies: pipeline + config hints. All fields optional for backward compatibility.",
+  "type": "object",
+  "properties": {
+    "summary": { "type": "string" },
+    "pipeline": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["image", "role"],
+        "properties": {
+          "step": { "type": "integer", "minimum": 1 },
+          "image": {
+            "type": "string",
+            "pattern": "^hive/[a-z0-9-]+:latest$"
+          },
+          "role": { "type": "string" },
+          "notes": { "type": "string" }
+        }
+      }
+    },
+    "agent_config_hints": {
+      "type": "object",
+      "description": "Subset aligned with agent-config-schema (llm, tools, memory, guardrails, budget, runtime, a2a, metadata)"
+    },
+    "open_questions": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "needs_human_review": { "type": "boolean" },
+    "refusal": { "type": "boolean" }
+  }
+}

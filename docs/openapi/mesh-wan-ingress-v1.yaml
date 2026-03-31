@@ -1,0 +1,57 @@
+openapi: 3.1.0
+info:
+  title: Hive mesh WAN ingress (internal) — v1
+  version: 0.1.0
+  description: |
+    Accepts a **wan-envelope-v1** JSON body and publishes **`mesh.wan.envelope`** on the Redis mesh bus (`hive:system:events`).
+    Not public Internet — call only from private network / workers (NATS subscriber, sidecar).
+  externalDocs:
+    url: ../MESH_PLANETARY_PRODUCT.md
+    description: Product scope P1–P3
+
+servers:
+  - url: https://hive-internal.example
+    description: Replace with your app origin
+
+paths:
+  /api/mesh/wan/ingress:
+    post:
+      operationId: meshWanIngress
+      summary: Ingest WAN envelope (operator or HIVE_INTERNAL_TOKEN)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "../schemas/wan-envelope-v1.schema.json"
+      responses:
+        "202":
+          description: Accepted; event published to Redis bus
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [accepted, correlationId]
+                properties:
+                  accepted:
+                    type: boolean
+                    const: true
+                  correlationId:
+                    type: string
+        "400":
+          description: Invalid JSON or envelope
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden (below operator)
+        "413":
+          description: Body too large
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: Hive session token, API token, or HIVE_INTERNAL_TOKEN

@@ -1,0 +1,195 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1773993002936,
+      "tag": "0000_magenta_tag",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1774252800000,
+      "tag": "0001_rename_container_to_instance",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1774339200000,
+      "tag": "0002_add_hypervisor",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1774425600000,
+      "tag": "0003_inference_usage_cascade",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1774512000000,
+      "tag": "0004_add_model_indexes",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1774598400000,
+      "tag": "0005_user_security_fields",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1774684800000,
+      "tag": "0006_mesh_agent_pins",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1774771200000,
+      "tag": "0007_agents_source_type_idx",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1774857600000,
+      "tag": "0008_marketplace_catalog_rows",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1774944000000,
+      "tag": "0009_marketplace_agent_local_stats",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1775030400000,
+      "tag": "0010_add_docker_hypervisor",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1775116800000,
+      "tag": "0011_instance_ui_settings",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1775203200000,
+      "tag": "0012_agent_status_ready",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1775289600000,
+      "tag": "0013_chat_conversations",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1775376000000,
+      "tag": "0014_llm_providers",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1775462400000,
+      "tag": "0015_agent_tools",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1775548800000,
+      "tag": "0016_agent_budget_cost",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1775635200000,
+      "tag": "0017_workflows",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1775721600000,
+      "tag": "0018_merge_workflows_into_agents",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1775808000000,
+      "tag": "0019_instance_security_ui",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1775894400000,
+      "tag": "0020_api_token_hmac",
+      "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1775980800000,
+      "tag": "0021_user_wallet_billing",
+      "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1776067200000,
+      "tag": "0022_billing_ledger_user_created_idx",
+      "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1776153600000,
+      "tag": "0023_add_mfa_fields",
+      "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1776240000000,
+      "tag": "0024_instance_runtime_config",
+      "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1776326400000,
+      "tag": "0025_instance_runtime_config_audit",
+      "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1776412800000,
+      "tag": "0026_instance_public_registry_hub",
+      "breakpoints": true
+    }
+  ]
+}

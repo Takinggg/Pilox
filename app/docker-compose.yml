@@ -1,0 +1,127 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: pilox-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: pilox
+      # Strong default for Docker Desktop + docker/docker-compose.local.yml (NODE_ENV=production in app image).
+      # Override: POSTGRES_PASSWORD=... in the environment or an env file when running compose.
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-PiloxLocalDockerPg2026xStrong}
+      POSTGRES_DB: pilox
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hive"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: pilox-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Reverse proxy — dashboard/API disabled by default (safe for prod-like setups).
+  # To debug routing locally, temporarily add: --api.dashboard=true + publish :8080 with auth.
+  traefik:
+    image: traefik:v3.3
+    container_name: pilox-traefik
+    restart: unless-stopped
+    command:
+      - "--api.dashboard=false"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entryPoints.web.address=:80"
+      - "--entryPoints.websecure.address=:443"
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+
+  # Stack observabilité locale (profil `otel`) : Tempo + Collector + Prometheus (pas de Grafana)
+  # Démarrage : docker compose --profile otel up -d   (ou npm run mesh:otel)
+  # Hive sur l’hôte : OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318
+  # Prometheus http://localhost:9090 — UI Alertes / graph ; Tempo http://localhost:3200 — API traces
+  tempo:
+    profiles: ["otel"]
+    image: grafana/tempo:2.5.0
+    container_name: pilox-tempo
+    restart: unless-stopped
+    command: ["-config.file=/etc/tempo.yaml"]
+    volumes:
+      - ../docs/observability/tempo-local.yaml:/etc/tempo.yaml:ro
+      - tempo_data:/var/tempo
+    expose:
+      - "4318"
+      - "4317"
+    ports:
+      - "3200:3200"
+
+  otel-collector:
+    profiles: ["otel"]
+    image: otel/opentelemetry-collector-contrib:0.118.0
+    container_name: pilox-otel-collector
+    restart: unless-stopped
+    command: ["--config=/etc/otelcol/config.yaml"]
+    depends_on:
+      - tempo
+    volumes:
+      - ../docs/observability/otel-collector-docker.local.yaml:/etc/otelcol/config.yaml:ro
+    ports:
+      - "4318:4318"
+      - "4317:4317"
+      - "8889:8889"
+      - "13133:13133"
+
+  prometheus:
+    profiles: ["otel"]
+    image: prom/prometheus:v2.53.3
+    container_name: pilox-prometheus
+    restart: unless-stopped
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--web.enable-lifecycle"
+    volumes:
+      - ../docs/observability/prometheus-otel-local.yml:/etc/prometheus/prometheus.yml:ro
+      - ../docs/observability/prometheus-rules.hive.yml:/etc/prometheus/rules.hive.yml:ro
+    ports:
+      - "9090:9090"
+    depends_on:
+      - otel-collector
+      - alertmanager
+
+  alertmanager:
+    profiles: ["otel"]
+    image: prom/alertmanager:v0.27.0
+    container_name: pilox-alertmanager
+    restart: unless-stopped
+    command:
+      - "--config.file=/etc/alertmanager/alertmanager.yml"
+    volumes:
+      - ../docs/observability/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+    ports:
+      - "9093:9093"
+
+volumes:
+  postgres_data:
+  redis_data:
+  tempo_data:
+
+networks:
+  default:
+    name: pilox-network
+    driver: bridge

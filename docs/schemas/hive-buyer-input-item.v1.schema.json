@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/hive/schemas/hive-buyer-input-item-v1",
+  "title": "hive-buyer-input-item-v1",
+  "description": "Single buyer/deployer configuration entry. Canonical spec shared by Hive app marketplace and services/registry Ajv. See packages/hive-buyer-config.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "label", "kind"],
+  "properties": {
+    "id": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "label": { "type": "string", "minLength": 1, "maxLength": 255 },
+    "key": {
+      "type": "string",
+      "maxLength": 128,
+      "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+    },
+    "kind": {
+      "type": "string",
+      "enum": ["env", "secret", "url", "text", "choice"]
+    },
+    "description": { "type": "string", "maxLength": 4096 },
+    "required": { "type": "boolean" },
+    "example": { "type": "string", "maxLength": 2048 },
+    "options": {
+      "type": "array",
+      "maxItems": 32,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["value"],
+        "properties": {
+          "value": { "type": "string", "maxLength": 512 },
+          "label": { "type": "string", "maxLength": 512 }
+        }
+      }
+    }
+  }
+}

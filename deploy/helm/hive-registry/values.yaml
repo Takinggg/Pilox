@@ -1,0 +1,48 @@
+# Build from repo root:
+#   docker build -f services/registry/Dockerfile -t pilox-registry:local .
+
+replicaCount: 1
+
+image:
+  repository: pilox-registry
+  pullPolicy: IfNotPresent
+  tag: "local"
+
+service:
+  type: ClusterIP
+  port: 4077
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 128Mi
+  limits:
+    memory: 512Mi
+
+podLabels: {}
+
+# Non-sensitive env (list of { name, value })
+extraEnv: []
+#  - name: REGISTRY_READ_RATE_LIMIT_PER_MIN
+#    value: "600"
+#  - name: REGISTRY_WRITE_RATE_LIMIT_PER_MIN
+#    value: "60"
+
+# Load REGISTRY_DATABASE_URL, REGISTRY_WRITE_SECRET, Redis URLs, etc. from your Secret (recommended).
+envFrom: []
+#  - secretRef:
+#      name: pilox-registry-env
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  hosts:
+    - host: registry.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+
+nameOverride: ""
+fullnameOverride: ""

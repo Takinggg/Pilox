@@ -1,0 +1,36 @@
+Hive
+Copyright 2026 Hive Contributors
+
+This product is licensed under the Business Source License 1.1 (BSL 1.1).
+See the LICENSE file for the full license text.
+
+On the Change Date (2030-03-21), or the fourth anniversary of the first
+publicly available distribution of each version, this software will be
+made available under the Apache License, Version 2.0.
+
+For commercial licensing inquiries, please contact: contact@maxence.design
+
+-------------------------------------------------------------------------------
+
+This product includes software developed by third parties. See the
+respective LICENSE files in each package's directory for their terms.
+
+Third-party components and their licenses:
+
+  Next.js - MIT License
+  Copyright (c) 2024 Vercel, Inc.
+
+  React - MIT License
+  Copyright (c) Meta Platforms, Inc. and affiliates.
+
+  Drizzle ORM - Apache License 2.0
+  Copyright (c) Drizzle Team
+
+  Zod - MIT License
+  Copyright (c) Colin McDonnell
+
+  NextAuth.js - ISC License
+  Copyright (c) Balazs Orban
+
+  sharp - Apache License 2.0
+  Copyright (c) Lovell Fuller and contributors

@@ -1,0 +1,46 @@
+{{- if .Values.networkPolicy.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "pilox-app.fullname" . }}
+  labels:
+    {{- include "pilox-app.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "pilox-app.selectorLabels" . | nindent 6 }}
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: ingress-nginx
+        - namespaceSelector:
+            matchLabels:
+              name: kube-system
+            podSelector:
+              matchLabels:
+                k8s-app: kube-dns
+      ports:
+        - protocol: TCP
+          port: 3000
+  egress:
+    {{- range .Values.networkPolicy.egress }}
+    - to:
+        {{- toYaml .to | nindent 10 }}
+      ports:
+        {{- range .ports }}
+        - protocol: {{ .protocol }}
+          port: {{ .port }}
+        {{- end }}
+    {{- end }}
+    - to:
+        - namespaceSelector: {}
+      ports:
+        - protocol: TCP
+          port: 53
+        - protocol: UDP
+          port: 53
+{{- end }}

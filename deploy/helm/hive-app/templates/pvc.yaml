@@ -1,0 +1,24 @@
+{{- if .Values.persistence.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "pilox-app.pvcname" . }}
+  labels:
+    {{- include "pilox-app.labels" . | nindent 4 }}
+  {{- with .Values.persistence.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  accessModes:
+    - {{ .Values.persistence.accessMode | default "ReadWriteOnce" }}
+  resources:
+    requests:
+      storage: {{ .Values.persistence.size | default "50Gi" }}
+  {{- if .Values.persistence.storageClass }}
+  storageClassName: {{ .Values.persistence.storageClass }}
+  {{- end }}
+  {{- if .Values.persistence.volumeName }}
+  volumeName: {{ .Values.persistence.volumeName }}
+  {{- end }}
+{{- end }}

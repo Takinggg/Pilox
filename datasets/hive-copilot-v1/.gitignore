@@ -1,0 +1,6 @@
+# Local dataset snapshots (JSONL copies); keep snapshot.json in CI artifacts if needed
+snapshots/
+
+# Bulk n8n.io community workflow JSON (regenerate: npm run dataset:download-n8n-community)
+external/n8n-community-workflows/*.json
+!external/n8n-community-workflows/download-manifest.json

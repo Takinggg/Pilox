@@ -1,0 +1,13 @@
+# Context = repo root for `app/Dockerfile` (needs `app/` + `packages/a2a-sdk`) and for `services/*/Dockerfile`.
+.git
+**/node_modules
+**/.next
+**/*.log
+os
+CDC
+*.pen
+app/coverage
+app/.turbo
+app/.env
+app/.env.local
+app/.env.*.local

@@ -1,0 +1,35 @@
+[Unit]
+Description=Hive Reverse Proxy (Caddy)
+Documentation=https://hive-os.dev/docs
+After=network-online.target hive-app.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+Restart=always
+RestartSec=5
+
+ExecStartPre=-/usr/bin/docker rm -f hive-proxy
+ExecStart=/usr/bin/docker run \
+    --name hive-proxy \
+    --network hive-network \
+    -v /etc/hive/tls:/etc/hive/tls:ro \
+    -v hive-caddy-data:/data \
+    -v hive-caddy-config:/config \
+    -p 80:80 \
+    -p 443:443 \
+    caddy:2-alpine \
+    caddy reverse-proxy \
+        --from :443 \
+        --to hive-app:3000 \
+        --internal-certs
+
+ExecStop=/usr/bin/docker stop -t 10 hive-proxy
+ExecStopPost=-/usr/bin/docker rm -f hive-proxy
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=hive-proxy
+
+[Install]
+WantedBy=multi-user.target
