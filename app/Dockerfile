@@ -21,7 +21,7 @@ RUN npm ci
 FROM base AS builder
 WORKDIR /build/app
 COPY --from=deps /build/app/node_modules ./node_modules
-COPY packages/a2a-sdk ../packages/a2a-sdk
+COPY --from=deps /build/packages/a2a-sdk ../packages/a2a-sdk
 COPY packages/pilox-buyer-config ../packages/pilox-buyer-config
 COPY app .
 
