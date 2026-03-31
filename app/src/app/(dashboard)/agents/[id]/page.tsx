@@ -255,7 +255,7 @@ function AgentCanvasTab({ agentId, graph }: { agentId: string; graph: WorkflowGr
   }
 
   return (
-    <WorkflowProvider initialNodes={initialNodes} initialEdges={initialEdges}>
+    <WorkflowProvider key={JSON.stringify(g.nodes?.map(n => n.id) ?? [])} initialNodes={initialNodes} initialEdges={initialEdges}>
       <AgentCanvasTabInner agentId={agentId} />
     </WorkflowProvider>
   );

@@ -103,7 +103,7 @@ export function NodeConfigPanel() {
 
   return (
     <Sheet open={isOpen} onOpenChange={(open) => { if (!open) selectNode(null); }}>
-      <SheetContent className="w-[400px] sm:w-[450px] overflow-y-auto">
+      <SheetContent className="w-[400px] sm:w-[450px] overflow-y-auto p-6">
         <SheetHeader>
           <SheetTitle className="flex items-center gap-2">
             {meta.icon}
