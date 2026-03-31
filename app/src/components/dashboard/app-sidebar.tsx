@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useState, useEffect } from "react";
 import {
   LayoutDashboard,
   Bot,
@@ -13,6 +14,8 @@ import {
   BarChart3,
   Store,
   BookOpen,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from "lucide-react";
 
 type Role = "admin" | "operator" | "viewer";
@@ -50,6 +53,15 @@ export function AppSidebar({ user }: AppSidebarProps) {
   const role = (user.role && user.role in ROLE_LEVEL ? user.role : "viewer") as Role;
   const level = ROLE_LEVEL[role];
 
+  const [collapsed, setCollapsed] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return localStorage.getItem("pilox-sidebar-collapsed") === "true";
+  });
+
+  useEffect(() => {
+    localStorage.setItem("pilox-sidebar-collapsed", String(collapsed));
+  }, [collapsed]);
+
   function isActive(href: string) {
     if (href === "/") return pathname === "/";
     return pathname.startsWith(href);
@@ -67,33 +79,56 @@ export function AppSidebar({ user }: AppSidebarProps) {
   const visibleNav = navItems.filter((item) => level >= ROLE_LEVEL[item.minRole]);
 
   return (
-    <aside className="flex w-64 shrink-0 flex-col justify-between border-r border-border bg-[var(--pilox-surface-lowest)] px-4 py-5">
+    <aside
+      className={`flex shrink-0 flex-col justify-between border-r border-border bg-[var(--pilox-surface-lowest)] py-5 transition-[width] duration-200 ${
+        collapsed ? "w-16 px-2" : "w-64 px-4"
+      }`}
+    >
       {/* Top: Logo + Nav */}
       <div className="flex flex-col gap-6">
-        <Link href="/" className="flex items-center gap-3 pb-2">
-          <div className="flex h-10 w-10 items-center justify-center bg-[var(--pilox-elevated)]">
-            <Hexagon className="h-[22px] w-[22px] text-[var(--pilox-primary)]" />
-          </div>
-          <span className="font-pilox-head text-xl font-bold text-foreground">Pilox</span>
-        </Link>
+        <div className="flex items-center justify-between pb-2">
+          <Link href="/" className="flex items-center gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center bg-[var(--pilox-elevated)]">
+              <Hexagon className="h-[22px] w-[22px] text-[var(--pilox-primary)]" />
+            </div>
+            {!collapsed && (
+              <span className="font-pilox-head text-xl font-bold text-foreground">Pilox</span>
+            )}
+          </Link>
+          <button
+            onClick={() => setCollapsed((c) => !c)}
+            className="flex h-7 w-7 items-center justify-center text-muted-foreground transition-colors hover:text-foreground"
+            title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          >
+            {collapsed ? (
+              <PanelLeftOpen className="h-4 w-4" />
+            ) : (
+              <PanelLeftClose className="h-4 w-4" />
+            )}
+          </button>
+        </div>
 
-        <nav className="flex flex-col gap-0.5">
+        <nav className="flex flex-col gap-0.5" aria-label="Main navigation">
           {visibleNav.map((item) => {
             const active = isActive(item.href);
             return (
               <Link
                 key={item.href}
                 href={item.href}
-                className={`flex h-9 items-center gap-3 px-3 text-sm transition-colors ${
+                title={collapsed ? item.label : undefined}
+                className={`flex h-9 items-center gap-3 text-sm transition-colors ${
+                  collapsed ? "justify-center px-0" : "px-3"
+                } ${
                   active
                     ? "border-l-[3px] border-l-[var(--pilox-primary)] bg-[var(--pilox-elevated)] font-medium text-foreground"
                     : "text-muted-foreground hover:bg-[var(--pilox-elevated)]/50 hover:text-[var(--pilox-fg-secondary)]"
                 }`}
+                aria-current={active ? "page" : undefined}
               >
                 <item.icon
                   className={`h-5 w-5 shrink-0 ${active ? "text-[var(--pilox-primary)]" : ""}`}
                 />
-                {item.label}
+                {!collapsed && item.label}
               </Link>
             );
           })}
@@ -101,18 +136,20 @@ export function AppSidebar({ user }: AppSidebarProps) {
       </div>
 
       {/* Bottom: User */}
-      <div className="flex items-center gap-3 border-t border-border pt-4">
+      <div className={`flex items-center gap-3 border-t border-border pt-4 ${collapsed ? "justify-center" : ""}`}>
         <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--pilox-elevated)]">
           <span className="text-xs font-semibold text-[var(--pilox-fg-secondary)]">
             {initials}
           </span>
         </div>
-        <div className="flex min-w-0 flex-1 flex-col">
-          <span className="truncate text-[13px] font-medium text-foreground">
-            {user.name ?? "User"}
-          </span>
-          <span className="text-[11px] text-muted-foreground">{ROLE_LABEL[role]}</span>
-        </div>
+        {!collapsed && (
+          <div className="flex min-w-0 flex-1 flex-col">
+            <span className="truncate text-[13px] font-medium text-foreground">
+              {user.name ?? "User"}
+            </span>
+            <span className="text-[11px] text-muted-foreground">{ROLE_LABEL[role]}</span>
+          </div>
+        )}
       </div>
     </aside>
   );
