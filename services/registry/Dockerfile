@@ -3,7 +3,7 @@ FROM node:22-alpine
 WORKDIR /app
 COPY docs/schemas/hive-registry-record-v1.schema.json /schemas/hive-registry-record-v1.schema.json
 COPY docs/schemas/hive-buyer-input-item.v1.schema.json /schemas/hive-buyer-input-item.v1.schema.json
-COPY packages/hive-buyer-config /packages/hive-buyer-config
+COPY packages/pilox-buyer-config /packages/pilox-buyer-config
 COPY services/registry/package.json services/registry/package-lock.json ./
 RUN npm ci --omit=dev
 COPY services/registry/src ./src

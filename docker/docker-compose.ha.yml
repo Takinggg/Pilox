@@ -39,7 +39,7 @@ services:
       - postgres_primary:/var/lib/postgresql/data
       - ./wal_archive:/wal_archive
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d hive"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -d pilox"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -78,7 +78,7 @@ services:
     volumes:
       - postgres_replica_1:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d hive"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -d pilox"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -116,7 +116,7 @@ services:
     volumes:
       - postgres_replica_2:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d hive"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -d pilox"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -329,11 +329,11 @@ services:
   # ─────────────────────────────────────────────────────────────────────────────
   # Hive Application (3 replicas)
   # ─────────────────────────────────────────────────────────────────────────────
-  hive_app:
-    image: ${PILOX_IMAGE:-hive/app:latest}
+  pilox_app:
+    image: ${PILOX_IMAGE:-pilox/app:latest}
     environment:
-      DATABASE_URL: postgres://postgres:${POSTGRES_PASSWORD}@postgres_primary:5432/hive
-      DATABASE_URL_REPLICA: postgres://postgres:${POSTGRES_PASSWORD}@postgres_replica_1:5432/hive
+      DATABASE_URL: postgres://postgres:${POSTGRES_PASSWORD}@postgres_primary:5432/pilox
+      DATABASE_URL_REPLICA: postgres://postgres:${POSTGRES_PASSWORD}@postgres_replica_1:5432/pilox
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis_primary:6379
       REDIS_SENTINEL_URL: redis://:${REDIS_PASSWORD}@redis_sentinel_1:26379
       REDIS_SENTINEL_SERVICE: pilox-redis
@@ -344,19 +344,19 @@ services:
       PILOX_CLIENT_IP_SOURCE: ${PILOX_CLIENT_IP_SOURCE:-xff_first}
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
-      - agent_data:/var/lib/hive/agents
+      - agent_data:/var/lib/pilox/agents
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.hive.rule=Host(`${PILOX_DOMAIN}`)"
-      - "traefik.http.routers.hive.tls=true"
-      - "traefik.http.routers.hive.tls.certresolver=letsencrypt"
-      - "traefik.http.services.hive.loadbalancer.server.port=3000"
-      - "traefik.http.services.hive.loadbalancer.sticky.cookie=true"
-      - "traefik.http.services.hive.loadbalancer.sticky.cookie.name=pilox_session"
-      - "traefik.http.services.hive.loadbalancer.sticky.cookie.httponly=true"
-      - "traefik.http.services.hive.loadbalancer.sticky.cookie.samesite=lax"
+      - "traefik.http.routers.pilox.rule=Host(`${PILOX_DOMAIN}`)"
+      - "traefik.http.routers.pilox.tls=true"
+      - "traefik.http.routers.pilox.tls.certresolver=letsencrypt"
+      - "traefik.http.services.pilox.loadbalancer.server.port=3000"
+      - "traefik.http.services.pilox.loadbalancer.sticky.cookie=true"
+      - "traefik.http.services.pilox.loadbalancer.sticky.cookie.name=pilox_session"
+      - "traefik.http.services.pilox.loadbalancer.sticky.cookie.httponly=true"
+      - "traefik.http.services.pilox.loadbalancer.sticky.cookie.samesite=lax"
       - "traefik.http.middlewares.hive-compress.compress=true"
-      - "traefik.http.routers.hive.middlewares=hive-compress"
+      - "traefik.http.routers.pilox.middlewares=hive-compress"
     networks:
       - pilox-network
     depends_on:

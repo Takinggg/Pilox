@@ -581,7 +581,7 @@ export default function MarketplacePage() {
           <button
             type="button"
             aria-pressed={viewMode === "grid"}
-            aria-label="Grid layout"
+            aria-label="Grid view"
             onClick={() => persistViewMode("grid")}
             className={cn(
               mpBtn,
@@ -596,7 +596,7 @@ export default function MarketplacePage() {
           <button
             type="button"
             aria-pressed={viewMode === "list"}
-            aria-label="List layout"
+            aria-label="List view"
             onClick={() => persistViewMode("list")}
             className={cn(
               mpBtn,

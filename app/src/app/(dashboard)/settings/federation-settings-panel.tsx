@@ -16,6 +16,7 @@ import type {
   MeshFederationProbeRow,
   MeshFederationPublicPayload,
 } from "@/lib/a2a/status-types";
+import { Skeleton } from "@/components/ui/skeleton";
 import { SettingsDeploymentNotice } from "@/components/settings/settings-deployment-notice";
 
 const SAFE_PROBE_ERROR = /^[a-zA-Z0-9_ :./()-]{1,120}$/;
@@ -351,7 +352,7 @@ export function FederationSettingsPanel({
             Enable federation to list peers.
           </p>
         ) : directoryLoading && !directory ? (
-          <p className="text-[12px] text-muted-foreground">Loading directory…</p>
+          <div className="space-y-2 py-1"><Skeleton className="h-3 w-40" /><Skeleton className="h-3 w-28" /></div>
         ) : directory && directory.peers.length === 0 ? (
           <p className="text-[12px] text-muted-foreground">
             No peers in the effective roster — configure{" "}

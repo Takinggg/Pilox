@@ -126,7 +126,7 @@
     "ajv": "^8.18.0",
     "ajv-formats": "^3.0.1",
     "browserslist": "^4.28.1",
-    "caniuse-lite": "^1.0.30001579",
+    "caniuse-lite": "^1.0.30001717",
     "drizzle-kit": "^0.31.10",
     "eslint": "^9",
     "eslint-config-next": "^15.5.14",

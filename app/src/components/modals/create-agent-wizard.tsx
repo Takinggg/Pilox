@@ -452,7 +452,7 @@ export function CreateAgentWizard({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onMouseDown={(e) => { if (e.target === e.currentTarget) handleClose(); }}>
-      <div className={`flex ${realStep === 1 ? "w-[900px]" : "w-[600px]"} max-h-[90vh] flex-col rounded-xl border border-border bg-card transition-all`}>
+      <div className={`flex ${realStep === 1 ? "w-[900px]" : "w-[680px]"} max-h-[90vh] flex-col rounded-xl border border-border bg-card transition-all`}>
         {/* Header */}
         <div className="flex items-center justify-between border-b border-border px-6 py-5">
           <h2 className="text-lg font-semibold text-foreground">Create New Agent</h2>
@@ -476,7 +476,7 @@ export function CreateAgentWizard({
                 }`}>
                   {i < step ? <CircleCheck className="h-3 w-3" /> : i + 1}
                 </div>
-                <span className={`text-[11px] font-medium truncate ${i <= step ? "text-foreground" : "text-muted-foreground"}`}>{s}</span>
+                <span className={`text-[11px] font-medium ${i <= step ? "text-foreground" : "text-muted-foreground"}`}>{s}</span>
               </button>
               {i < activeSteps.length - 1 && <div className={`h-px flex-1 mx-2 min-w-2 ${i < step ? "bg-primary" : "bg-[var(--pilox-border)]"}`} />}
             </div>

@@ -25,6 +25,7 @@ import {
   Code2,
   Layers,
 } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 import type { ObservabilityPreset } from "@/lib/observability-prometheus";
 import {
   traceWaterfallFromPayload,
@@ -94,8 +95,9 @@ function ChartCard({
         ) : null}
       </div>
       {loading ? (
-        <div className="flex h-[220px] items-center justify-center text-sm text-muted-foreground">
-          Loading...
+        <div className="flex h-[220px] flex-col items-center justify-center gap-3">
+          <Skeleton className="h-4 w-32" />
+          <Skeleton className="h-[180px] w-full" />
         </div>
       ) : error ? (
         <div className="flex h-[220px] items-center justify-center text-center text-sm text-amber-500/90">
@@ -273,7 +275,7 @@ export default function ObservabilityPage() {
             console.warn("[pilox] observability: prometheus error JSON parse failed", e);
             return {};
           });
-          errs[preset] = (j.error as string) ?? `Erreur ${r.status}`;
+          errs[preset] = (j.error as string) ?? `Error ${r.status}`;
           next[preset] = null;
           continue;
         }
@@ -368,7 +370,7 @@ export default function ObservabilityPage() {
           console.warn("[pilox] observability: tempo trace JSON parse failed", e);
           return {};
         });
-        setTraceDetailError((j.error as string) ?? `Erreur ${r.status}`);
+        setTraceDetailError((j.error as string) ?? `Error ${r.status}`);
         setTraceDetailLoading(false);
         return;
       }
@@ -394,7 +396,7 @@ export default function ObservabilityPage() {
           </div>
           <p className="max-w-2xl text-sm text-[var(--pilox-fg-secondary)]">
             Prometheus metrics and Tempo traces via server-side APIs (whitelisted
-            presets). No Grafana in the l’UI Pilox.
+            presets). No Grafana in the Pilox UI.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
@@ -437,7 +439,8 @@ export default function ObservabilityPage() {
         <div className="mb-6 rounded-xl border border-amber-500/20 bg-amber-500/5 p-3 text-xs text-amber-100/90">
           <strong className="text-amber-200">Prometheus</strong> : set{" "}
           <code className="rounded bg-black/30 px-1">PROMETHEUS_OBSERVABILITY_URL</code>{" "}
-          pour les graphiques (ex. <code className="rounded bg-black/30 px-1">http://prometheus:9090</code>
+          for charts (e.g.{" "}
+          <code className="rounded bg-black/30 px-1">http://prometheus:9090</code>
           ).
         </div>
       ) : null}
@@ -549,7 +552,7 @@ export default function ObservabilityPage() {
                         onClick={() => void openTrace(row.traceID)}
                         className="text-primary hover:underline"
                       >
-                        Détails
+                        Details
                       </button>
                     </td>
                   </tr>
@@ -575,7 +578,7 @@ export default function ObservabilityPage() {
                   setTraceDetailError(null);
                 }}
                 className="rounded p-1 text-muted-foreground hover:bg-[var(--pilox-elevated)] hover:text-foreground"
-                aria-label="Fermer"
+                aria-label="Close"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -622,16 +625,16 @@ export default function ObservabilityPage() {
               ) : (
                 <div className="space-y-3 text-sm text-muted-foreground">
                   <p>
-                    Impossible d’afficher le waterfall (format OTLP / batches non
-                    reconnu ou trace vide). Utilisez l’onglet{" "}
+                    Unable to display the waterfall (unrecognized OTLP / batches
+                    format or empty trace). Use the{" "}
                     <button
                       type="button"
                       className="text-primary hover:underline"
                       onClick={() => setTraceDetailTab("json")}
                     >
                       JSON
-                    </button>
-                    .
+                    </button>{" "}
+                    tab.
                   </p>
                 </div>
               )}

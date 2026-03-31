@@ -330,12 +330,21 @@ export default function AgentsPage() {
                   : "Try adjusting your filters"}
               </p>
               {agents.length === 0 && (
-                <a
-                  href="/marketplace"
-                  className="mt-4 inline-flex items-center gap-2 bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground transition hover:opacity-90"
-                >
-                  Browse Marketplace
-                </a>
+                <div className="mt-3 flex items-center gap-3">
+                  <button
+                    onClick={() => setShowCreate(true)}
+                    className="inline-flex items-center gap-2 bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+                  >
+                    <Plus className="h-4 w-4" />
+                    Create Agent
+                  </button>
+                  <a
+                    href="/marketplace"
+                    className="inline-flex items-center gap-2 border border-border bg-transparent px-4 py-2 text-xs font-semibold text-foreground transition hover:bg-[var(--pilox-elevated)]"
+                  >
+                    Browse Marketplace
+                  </a>
+                </div>
               )}
             </div>
           ) : (
