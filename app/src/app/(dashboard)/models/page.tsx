@@ -589,6 +589,16 @@ export default function ModelsPage() {
                             <Cpu className="h-3 w-3" />
                             vLLM ready
                           </span>
+                        ) : model.huggingFaceId ? (
+                          <a
+                            href={`https://huggingface.co/${model.huggingFaceId}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex h-8 items-center gap-1.5 rounded-lg border border-border px-3 text-[11px] text-[var(--pilox-fg-secondary)] hover:border-[var(--pilox-purple)] hover:text-[var(--pilox-purple)]"
+                          >
+                            <ExternalLink className="h-3 w-3" />
+                            HuggingFace
+                          </a>
                         ) : (
                           <span className="text-[10px] text-muted-foreground opacity-50">Manual only</span>
                         )}

@@ -50,7 +50,6 @@ services:
   vllm:
     image: vllm/vllm-openai:latest
     restart: unless-stopped
-    profiles: ["vllm"]
     ports:
       - "8000:8000"
     volumes:

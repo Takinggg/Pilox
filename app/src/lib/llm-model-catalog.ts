@@ -1733,6 +1733,7 @@ export const MODEL_CATALOG: ModelEntry[] = [
     license: "Stability AI Open",
     released: "2023-07",
     ollamaId: undefined,
+    huggingFaceId: "stabilityai/stable-diffusion-xl-base-1.0",
     recommended: true,
   },
   {
@@ -1751,6 +1752,7 @@ export const MODEL_CATALOG: ModelEntry[] = [
     license: "Stability AI Community",
     released: "2024-06",
     ollamaId: undefined,
+    huggingFaceId: "stabilityai/stable-diffusion-3-medium",
   },
   {
     id: "stable-diffusion-3.5-large",
@@ -1768,6 +1770,7 @@ export const MODEL_CATALOG: ModelEntry[] = [
     license: "Stability AI Community",
     released: "2024-10",
     ollamaId: undefined,
+    huggingFaceId: "stabilityai/stable-diffusion-3.5-large",
   },
   {
     id: "flux-1-schnell",
@@ -1785,6 +1788,7 @@ export const MODEL_CATALOG: ModelEntry[] = [
     license: "Apache 2.0",
     released: "2024-08",
     ollamaId: undefined,
+    huggingFaceId: "black-forest-labs/FLUX.1-schnell",
     recommended: true,
   },
   {
@@ -1803,6 +1807,7 @@ export const MODEL_CATALOG: ModelEntry[] = [
     license: "FLUX.1-dev Non-Commercial",
     released: "2024-08",
     ollamaId: undefined,
+    huggingFaceId: "black-forest-labs/FLUX.1-dev",
   },
   {
     id: "flux-1-pro",
@@ -1820,6 +1825,7 @@ export const MODEL_CATALOG: ModelEntry[] = [
     license: "Commercial",
     released: "2024-08",
     ollamaId: undefined,
+    huggingFaceId: "black-forest-labs/FLUX.1-pro",
   },
 
   // ╔══════════════════════════════════════════════════╗
@@ -1841,6 +1847,7 @@ export const MODEL_CATALOG: ModelEntry[] = [
     license: "Apache 2.0",
     released: "2023-11",
     ollamaId: undefined,
+    huggingFaceId: "openai/whisper-large-v3",
     recommended: true,
   },
   {
@@ -1859,6 +1866,7 @@ export const MODEL_CATALOG: ModelEntry[] = [
     license: "Apache 2.0",
     released: "2024-10",
     ollamaId: undefined,
+    huggingFaceId: "openai/whisper-large-v3-turbo",
   },
   {
     id: "whisper-medium",
@@ -1876,6 +1884,7 @@ export const MODEL_CATALOG: ModelEntry[] = [
     license: "Apache 2.0",
     released: "2022-09",
     ollamaId: undefined,
+    huggingFaceId: "openai/whisper-medium",
   },
   {
     id: "whisper-small",
@@ -1893,6 +1902,7 @@ export const MODEL_CATALOG: ModelEntry[] = [
     license: "Apache 2.0",
     released: "2022-09",
     ollamaId: undefined,
+    huggingFaceId: "openai/whisper-small",
   },
   {
     id: "bark",
@@ -1910,6 +1920,7 @@ export const MODEL_CATALOG: ModelEntry[] = [
     license: "MIT",
     released: "2023-04",
     ollamaId: undefined,
+    huggingFaceId: "suno/bark",
   },
   {
     id: "parler-tts-large",
@@ -1927,6 +1938,7 @@ export const MODEL_CATALOG: ModelEntry[] = [
     license: "Apache 2.0",
     released: "2024-08",
     ollamaId: undefined,
+    huggingFaceId: "parler-tts/parler-tts-large-v1",
   },
   {
     id: "xtts-v2",
@@ -1944,6 +1956,7 @@ export const MODEL_CATALOG: ModelEntry[] = [
     license: "CPML",
     released: "2023-11",
     ollamaId: undefined,
+    huggingFaceId: "coqui/XTTS-v2",
   },
 
   // ╔══════════════════════════════════════════════════╗
@@ -2101,6 +2114,8 @@ export const MODEL_CATALOG: ModelEntry[] = [
     license: "Apache 2.0",
     released: "2024-05",
     ollamaId: undefined,
+    vllmId: "state-spaces/mamba-2.8b",
+    huggingFaceId: "state-spaces/mamba-2.8b",
   },
   {
     id: "tinyllama-1.1b",
@@ -2255,9 +2270,9 @@ export function filterModels(opts: {
 }): ModelEntry[] {
   let results = MODEL_CATALOG;
 
-  // By default, only show models that can run locally (Ollama or vLLM)
+  // Show all models with at least one backend (Ollama, vLLM, or HuggingFace link)
   if (!opts.includeNonLocal) {
-    results = results.filter((m) => !!m.ollamaId || !!m.vllmId);
+    results = results.filter((m) => !!m.ollamaId || !!m.vllmId || !!m.huggingFaceId);
   }
 
   if (opts.category && opts.category !== "all") {
