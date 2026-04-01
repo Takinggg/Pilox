@@ -36,7 +36,11 @@ export type StepType =
   | "memory"
   | "http"
   | "code"
-  | "loop";
+  | "loop"
+  | "embedding"
+  | "classifier"
+  | "image-gen"
+  | "audio";
 
 /** Flowise/Langflow catalog metadata attached to a node when dragged from catalog */
 export interface CatalogNodeDef {

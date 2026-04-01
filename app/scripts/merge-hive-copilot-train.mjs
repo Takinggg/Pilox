@@ -50,11 +50,16 @@ function main() {
     ? fs.readFileSync(canonicalPath, "utf8").trim().split("\n").filter(Boolean)
     : [];
 
+  const newNodesPath = path.join(DATA, "gold-new-nodes-v2.jsonl");
+  const newNodes = fs.existsSync(newNodesPath)
+    ? fs.readFileSync(newNodesPath, "utf8").trim().split("\n").filter(Boolean)
+    : [];
+
   // Upsample gold/enriched/nodeDeep 20x to prevent synthetic dilution
   const goldUp = [];
   const UPSAMPLE = 40;
   for (let i = 0; i < UPSAMPLE; i++) {
-    goldUp.push(...gold, ...enriched, ...nodeDeep, ...canonical);
+    goldUp.push(...gold, ...enriched, ...nodeDeep, ...canonical, ...newNodes);
   }
 
   let lines = [...goldUp, ...syn, ...pub];
