@@ -27,6 +27,7 @@ import {
   Undo2, Redo2, Bot, Sparkles, GitBranch, CircleStop, GripVertical,
   Brain, FileText, Search, Wrench, Database, Globe, Code2, Repeat,
   BookOpen, LayoutTemplate, ChevronDown, Hexagon, LayoutGrid, Maximize2,
+  Binary, Tag, ImageIcon, Mic,
 } from "lucide-react";
 import "@xyflow/react/dist/style.css";
 
@@ -93,6 +94,15 @@ const paletteCategories: PaletteCategory[] = [
       { stepType: "prompt", label: "Prompt", description: "Prompt template", icon: FileText, color: "text-orange-400", bg: "bg-orange-500/10" },
       { stepType: "rag", label: "RAG Search", description: "Vector search", icon: Search, color: "text-emerald-400", bg: "bg-emerald-500/10" },
       { stepType: "memory", label: "Memory", description: "Conversation memory", icon: Database, color: "text-indigo-400", bg: "bg-indigo-500/10" },
+      { stepType: "embedding", label: "Embedding", description: "Vector embedding", icon: Binary, color: "text-teal-400", bg: "bg-teal-500/10" },
+      { stepType: "classifier", label: "Classifier", description: "Text classification", icon: Tag, color: "text-pink-400", bg: "bg-pink-500/10" },
+    ],
+  },
+  {
+    label: "Media",
+    items: [
+      { stepType: "image-gen", label: "Image Gen", description: "Generate images", icon: ImageIcon, color: "text-purple-400", bg: "bg-purple-500/10" },
+      { stepType: "audio", label: "Audio", description: "Speech-to-text / TTS", icon: Mic, color: "text-yellow-400", bg: "bg-yellow-500/10" },
     ],
   },
   {

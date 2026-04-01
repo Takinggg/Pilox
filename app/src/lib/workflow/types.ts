@@ -16,7 +16,11 @@ export interface WorkflowNode {
     | "memory"
     | "http"
     | "code"
-    | "loop";
+    | "loop"
+    | "embedding"
+    | "classifier"
+    | "image-gen"
+    | "audio";
   data: {
     agentId?: string;
     /** Action for non-agent nodes: "passthrough" | "filter" | "map" */
@@ -61,6 +65,13 @@ export interface WorkflowNode {
     // Loop node
     loopVariable?: string;
     maxIterations?: number;
+    // Classifier node
+    classifierLabels?: string;
+    // Image gen node
+    imageSize?: string;
+    // Audio node
+    audioAction?: string;
+    voice?: string;
     // Canvas position (persisted for layout restoration)
     _position?: { x: number; y: number };
   };

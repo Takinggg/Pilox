@@ -94,6 +94,10 @@ export function graphToReactFlow(graph: WorkflowGraph): { nodes: Node[]; edges: 
     http: WfNodeType.STEP,
     code: WfNodeType.STEP,
     loop: WfNodeType.STEP,
+    embedding: WfNodeType.STEP,
+    classifier: WfNodeType.STEP,
+    "image-gen": WfNodeType.STEP,
+    audio: WfNodeType.STEP,
   };
 
   const nodes: Node[] = graph.nodes.map((n) => {

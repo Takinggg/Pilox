@@ -14,6 +14,10 @@ import { executeMemoryNode } from "./nodes/memory";
 import { executeRagNode } from "./nodes/rag";
 import { executeToolNode } from "./nodes/tool";
 import { executeTransformNode } from "./nodes/transform";
+import { executeEmbeddingNode } from "./nodes/embedding";
+import { executeClassifierNode } from "./nodes/classifier";
+import { executeImageGenNode } from "./nodes/image-gen";
+import { executeAudioNode } from "./nodes/audio";
 
 const log = createModuleLogger("workflow-executor");
 
@@ -247,6 +251,18 @@ async function executeNode(node: WorkflowNode, variables: Record<string, unknown
     case "loop":
       // Loop node returns the array to iterate; actual iteration done by graph traversal
       return executeLoopNode(node, variables);
+
+    case "embedding":
+      return executeEmbeddingNode(node, variables, timeoutMs);
+
+    case "classifier":
+      return executeClassifierNode(node, variables, timeoutMs);
+
+    case "image-gen":
+      return executeImageGenNode(node, variables, timeoutMs);
+
+    case "audio":
+      return executeAudioNode(node, variables, timeoutMs);
 
     default:
       throw new Error(`Unknown node type: ${node.type}`);

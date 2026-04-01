@@ -78,6 +78,7 @@ def run_training(
     learning_rate: float,
     lora_r: int,
     seed: int,
+    qlora: bool = False,
 ) -> str:
     import torch
     from datasets import Dataset
@@ -103,12 +104,25 @@ def run_training(
     ds = ds.map(to_text, batched=True, remove_columns=["messages"])
 
     dtype = torch.bfloat16 if torch.cuda.is_available() else torch.float32
-    model = AutoModelForCausalLM.from_pretrained(
-        base_model,
-        trust_remote_code=True,
-        dtype=dtype,
-        device_map="auto" if torch.cuda.is_available() else None,
-    )
+
+    load_kwargs: dict = {
+        "trust_remote_code": True,
+        "device_map": "auto" if torch.cuda.is_available() else None,
+    }
+
+    if qlora and torch.cuda.is_available():
+        from transformers import BitsAndBytesConfig
+        load_kwargs["quantization_config"] = BitsAndBytesConfig(
+            load_in_4bit=True,
+            bnb_4bit_quant_type="nf4",
+            bnb_4bit_compute_dtype=dtype,
+            bnb_4bit_use_double_quant=True,
+        )
+        print("QLoRA 4-bit enabled — VRAM usage ~6-8GB", flush=True)
+    else:
+        load_kwargs["dtype"] = dtype
+
+    model = AutoModelForCausalLM.from_pretrained(base_model, **load_kwargs)
     if not torch.cuda.is_available():
         model = model.to("cpu")
 
@@ -181,12 +195,14 @@ def main() -> int:
     ap.add_argument("--learning-rate", type=float, default=2e-4)
     ap.add_argument("--lora-r", type=int, default=16)
     ap.add_argument("--seed", type=int, default=42)
+    ap.add_argument("--qlora", action="store_true", help="Enable 4-bit QLoRA (for GPUs with <16GB VRAM, e.g. RTX 3080)")
     args = ap.parse_args()
 
     PRESET = {
         "smoke": {"max_steps": 1, "max_samples": 8},
         "dev": {"max_steps": 80, "max_samples": 4000, "learning_rate": 2e-4, "lora_r": 16},
         "production": {"max_steps": 500, "max_samples": None, "learning_rate": 1.5e-4, "lora_r": 16},
+        "local": {"max_steps": 600, "max_samples": 10000, "learning_rate": 2e-4, "lora_r": 16, "qlora": True},
     }
     if args.preset:
         for k, v in PRESET[args.preset].items():
@@ -202,6 +218,7 @@ def main() -> int:
         learning_rate=args.learning_rate,
         lora_r=args.lora_r,
         seed=args.seed,
+        qlora=args.qlora,
     )
     print(msg, flush=True)
     return 0
