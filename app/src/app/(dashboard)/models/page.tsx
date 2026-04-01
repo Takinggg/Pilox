@@ -25,6 +25,7 @@ import {
   Mic,
   Tag,
   Layers,
+  Zap,
   type LucideIcon,
 } from "lucide-react";
 import {
@@ -586,6 +587,14 @@ export default function ModelsPage() {
                           {model.strengths.slice(0, 2).map((s, i) => (
                             <span key={i} className="rounded-full bg-primary/5 px-2 py-0.5 text-[9px] text-primary">{s}</span>
                           ))}
+                          {model.vptqModelId && (
+                            <span className="rounded-full bg-[var(--pilox-purple)]/10 px-2 py-0.5 text-[9px] text-[var(--pilox-purple)] font-semibold">VPTQ 2-bit</span>
+                          )}
+                          {model.vramEstimate && (
+                            <span className="rounded-full bg-[var(--pilox-blue)]/10 px-2 py-0.5 text-[9px] text-[var(--pilox-blue)]">
+                              {model.vramEstimate.vptq2}GB VRAM
+                            </span>
+                          )}
                         </div>
                       </div>
 
@@ -601,6 +610,16 @@ export default function ModelsPage() {
                           <span className="flex items-center gap-1 text-[11px] text-primary">
                             <CheckCircle2 className="h-3.5 w-3.5" /> Installed
                           </span>
+                        ) : model.vptqModelId ? (
+                          <button
+                            onClick={() => {
+                              toast.info(`To load ${model.name} VPTQ 2-bit:\n1. Set VLLM_MODEL=${model.vptqModelId} in docker/.env\n2. Restart vLLM container\nEstimated VRAM: ${model.vramEstimate?.vptq2 ?? "?"}GB`);
+                            }}
+                            className="flex h-8 items-center gap-1.5 rounded-lg border border-[var(--pilox-purple)]/40 bg-[var(--pilox-purple)]/5 px-3 text-[11px] font-medium text-[var(--pilox-purple)] hover:bg-[var(--pilox-purple)]/10"
+                          >
+                            <Zap className="h-3 w-3" />
+                            VPTQ 2-bit ({model.vramEstimate?.vptq2 ?? "?"}GB)
+                          </button>
                         ) : model.ollamaId ? (
                           <button
                             onClick={() => pullModel(ollamaName, model.id)}
