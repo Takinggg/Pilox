@@ -106,6 +106,8 @@ export const agents = pgTable("agents", {
   // Workflow graph (for composed agents)
   graph: jsonb("graph").$type<Record<string, unknown>>(),
   agentType: varchar("agent_type", { length: 20 }).notNull().default("simple"),
+  /** Visibility: 'private' (local only), 'federation' (federated peers), 'public' (global registry) */
+  visibility: varchar("visibility", { length: 20 }).notNull().default("private"),
   // Import / marketplace origin tracking
   sourceType: agentSourceTypeEnum("source_type").default("local"),
   sourceUrl: text("source_url"),

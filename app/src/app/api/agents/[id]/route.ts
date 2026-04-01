@@ -35,6 +35,7 @@ const patchAgentSchema = z.object({
   preferredModel: z.string().max(255).nullable().optional(),
   graph: z.record(z.string(), z.unknown()).nullable().optional(),
   agentType: z.enum(["simple", "composed"]).optional(),
+  visibility: z.enum(["private", "federation", "public"]).optional(),
 });
 
 function isPlainObject(v: unknown): v is Record<string, unknown> {
