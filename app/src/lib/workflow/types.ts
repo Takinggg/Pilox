@@ -61,6 +61,8 @@ export interface WorkflowNode {
     // Loop node
     loopVariable?: string;
     maxIterations?: number;
+    // Canvas position (persisted for layout restoration)
+    _position?: { x: number; y: number };
   };
 }
 
