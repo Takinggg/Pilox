@@ -139,13 +139,8 @@ export async function POST(req: Request) {
     }
     const data = createAgentSchema.parse(bodyResult.value);
 
-    // Warn if agent wants GPU inference but no GPU is available on host
-    if (data.gpuEnabled) {
-      const gpuOk = await checkGPUAvailable();
-      if (!gpuOk) {
-        return errorResponse(ErrorCode.GPU_UNAVAILABLE, "GPU inference requested but no NVIDIA GPU is available on this host. Agents access GPU via the shared inference service (vLLM/Ollama), not directly.", 400);
-      }
-    }
+    // GPU inference runs through Ollama/vLLM — no need to block agent creation
+    // The agent container itself doesn't need direct GPU access
 
     return await withUserLock(authResult.user.id, async () => {
       const [agent] = await db.transaction(async (tx) => {
