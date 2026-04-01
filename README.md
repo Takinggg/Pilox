@@ -47,6 +47,7 @@ Pilox/
 - **Observability** — Prometheus metrics + Tempo traces
 - **Security** — AES-256-GCM encryption, RBAC, audit logs
 - **Self-hosted** — Your VPC, your data, no vendor lock-in
+- **TurboQuant** — Google's 3-bit KV cache compression: run 70B models on consumer GPUs
 
 ## Environment
 

@@ -56,7 +56,16 @@ services:
       - pilox_vllm_data:/root/.cache/huggingface
     environment:
       HUGGING_FACE_HUB_TOKEN: ${HUGGING_FACE_HUB_TOKEN:-}
-    command: ["--host", "0.0.0.0", "--port", "8000"]
+      PIP_EXTRA_PACKAGES: "turboquant-kv[triton]"
+    command: >
+      sh -c "pip install turboquant-kv[triton] 2>/dev/null;
+      python -m vllm.entrypoints.openai.api_server
+      --host 0.0.0.0 --port 8000
+      --model ${VLLM_MODEL:-Qwen/Qwen3-0.6B}
+      --kv-cache-dtype auto
+      --max-model-len ${VLLM_MAX_MODEL_LEN:-32768}
+      --gpu-memory-utilization ${VLLM_GPU_UTIL:-0.9}
+      --quantization ${VLLM_QUANTIZATION:-none}"
     deploy:
       resources:
         reservations:
