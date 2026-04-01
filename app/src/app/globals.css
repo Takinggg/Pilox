@@ -51,6 +51,7 @@
 /* ------------------------------------------------------------------ */
 /*  Hive Design Tokens — Light (default)                              */
 /* ------------------------------------------------------------------ */
+@layer base {
 :root {
   /* Hive core tokens */
   --pilox-primary: #b91c1c;
@@ -124,10 +125,12 @@
 
   --overlay: rgba(0, 0, 0, 0.4);
 }
+} /* end @layer base (light) */
 
 /* ------------------------------------------------------------------ */
 /*  Hive Design Tokens — Dark                                         */
 /* ------------------------------------------------------------------ */
+@layer base {
 .dark {
   --pilox-primary: #ffb4a8;
   --pilox-primary-alt: #ff5540;
@@ -196,6 +199,7 @@
 
   --overlay: rgba(0, 0, 0, 0.6);
 }
+} /* end @layer base (dark) */
 
 @layer base {
   * {

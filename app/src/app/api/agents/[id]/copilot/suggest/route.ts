@@ -68,8 +68,7 @@ export async function POST(
     const userPrompt = buildUserPrompt(nodes, edges, userIntent);
 
     try {
-      const inferencePort = process.env.INFERENCE_PORT || "11434";
-      const baseUrl = `http://127.0.0.1:${inferencePort}`;
+      const baseUrl = process.env.OLLAMA_URL || `http://127.0.0.1:${process.env.INFERENCE_PORT || "11434"}`;
 
       const res = await fetch(`${baseUrl}/api/chat`, {
         method: "POST",

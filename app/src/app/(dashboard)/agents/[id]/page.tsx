@@ -48,6 +48,7 @@ import type { AgentConfig } from "@/lib/agent-config-schema";
 import { WorkflowProvider, useWorkflow } from "@/components/workflow/WorkflowContext";
 import { WorkflowCanvas } from "@/components/workflow/WorkflowCanvas";
 import { NodeConfigPanel } from "@/components/workflow/NodeConfigPanel";
+import { CopilotPanel } from "@/components/workflow/CopilotPanel";
 import { graphToReactFlow, reactFlowToGraph } from "@/components/workflow/utils/flow-converter";
 import type { WorkflowGraph } from "@/lib/workflow-executor";
 import { ChatTab } from "./tabs/chat-tab";
@@ -233,6 +234,7 @@ function AgentCanvasTabInner({ agentId }: { agentId: string }) {
         <WorkflowCanvas />
       </div>
       <NodeConfigPanel />
+      <CopilotPanel agentId={agentId} />
     </div>
   );
 }
