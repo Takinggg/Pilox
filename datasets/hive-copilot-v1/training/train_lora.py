@@ -186,7 +186,7 @@ def main() -> int:
     )
     ap.add_argument(
         "--preset",
-        choices=["smoke", "dev", "production"],
+        choices=["smoke", "dev", "production", "local"],
         default=None,
         help="smoke=1 step 8 samples; dev=80 steps 4k samples; production=500 steps full data, lr 1.5e-4. Overrides other flags unless you omit --preset.",
     )

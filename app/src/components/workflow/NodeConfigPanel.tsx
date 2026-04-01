@@ -653,6 +653,140 @@ export function NodeConfigPanel() {
               />
             )}
 
+            {/* ── Embedding ──────────────────────── */}
+            {stepType === "embedding" && (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="emb-model">Embedding Model</Label>
+                  <Input id="emb-model" value={(d.model as string) ?? "nomic-embed-text"} onChange={(e) => handleChange("model", e.target.value)} placeholder="nomic-embed-text" />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="emb-provider">Provider</Label>
+                  <Select value={(d.provider as string) ?? "ollama"} onValueChange={(v) => handleChange("provider", v)}>
+                    <SelectTrigger id="emb-provider"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="ollama">Ollama</SelectItem>
+                      <SelectItem value="vllm">vLLM</SelectItem>
+                      <SelectItem value="openai">OpenAI</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="emb-input">Input Text</Label>
+                  <Textarea id="emb-input" value={(d.template as string) ?? ""} onChange={(e) => handleChange("template", e.target.value)} placeholder="Use {{variable}} for substitution..." rows={3} />
+                  <p className="text-xs text-muted-foreground">Leave empty to use previous step output.</p>
+                </div>
+              </>
+            )}
+
+            {/* ── Classifier ────────────────────── */}
+            {stepType === "classifier" && (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="cls-model">Model</Label>
+                  <Input id="cls-model" value={(d.model as string) ?? ""} onChange={(e) => handleChange("model", e.target.value)} placeholder="cross-encoder/nli-deberta-v3-large" />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="cls-labels">Labels (comma-separated)</Label>
+                  <Input id="cls-labels" value={(d.classifierLabels as string) ?? ""} onChange={(e) => handleChange("classifierLabels", e.target.value)} placeholder="positive, negative, neutral" />
+                  <p className="text-xs text-muted-foreground">The model will classify the input text into one of these labels.</p>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="cls-input">Input Text</Label>
+                  <Textarea id="cls-input" value={(d.template as string) ?? ""} onChange={(e) => handleChange("template", e.target.value)} placeholder="Use {{variable}} for substitution..." rows={3} />
+                </div>
+              </>
+            )}
+
+            {/* ── Image Gen ─────────────────────── */}
+            {stepType === "image-gen" && (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="img-model">Model</Label>
+                  <Input id="img-model" value={(d.model as string) ?? "dall-e-3"} onChange={(e) => handleChange("model", e.target.value)} placeholder="dall-e-3" />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="img-provider">Provider</Label>
+                  <Select value={(d.provider as string) ?? "openai"} onValueChange={(v) => handleChange("provider", v)}>
+                    <SelectTrigger id="img-provider"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="openai">OpenAI (DALL-E)</SelectItem>
+                      <SelectItem value="stability">Stability AI</SelectItem>
+                      <SelectItem value="local">Local (ComfyUI/A1111)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="img-size">Image Size</Label>
+                  <Select value={(d.imageSize as string) ?? "1024x1024"} onValueChange={(v) => handleChange("imageSize", v)}>
+                    <SelectTrigger id="img-size"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="256x256">256x256</SelectItem>
+                      <SelectItem value="512x512">512x512</SelectItem>
+                      <SelectItem value="1024x1024">1024x1024</SelectItem>
+                      <SelectItem value="1792x1024">1792x1024 (wide)</SelectItem>
+                      <SelectItem value="1024x1792">1024x1792 (tall)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="img-prompt">Prompt</Label>
+                  <Textarea id="img-prompt" value={(d.template as string) ?? ""} onChange={(e) => handleChange("template", e.target.value)} placeholder="A futuristic city with flying cars..." rows={4} />
+                  <p className="text-xs text-muted-foreground">Supports {"{{variable}}"} substitution.</p>
+                </div>
+              </>
+            )}
+
+            {/* ── Audio ──────────────────────────── */}
+            {stepType === "audio" && (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="audio-action">Action</Label>
+                  <Select value={(d.audioAction as string) ?? "transcribe"} onValueChange={(v) => handleChange("audioAction", v)}>
+                    <SelectTrigger id="audio-action"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="transcribe">Transcribe (Speech → Text)</SelectItem>
+                      <SelectItem value="tts">Text-to-Speech (Text → Audio)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="audio-model">Model</Label>
+                  <Input id="audio-model" value={(d.model as string) ?? ""} onChange={(e) => handleChange("model", e.target.value)} placeholder={(d.audioAction as string) === "tts" ? "tts-1" : "whisper-1"} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="audio-provider">Provider</Label>
+                  <Select value={(d.provider as string) ?? "openai"} onValueChange={(v) => handleChange("provider", v)}>
+                    <SelectTrigger id="audio-provider"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="openai">OpenAI</SelectItem>
+                      <SelectItem value="local">Local (Whisper/Bark)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                {(d.audioAction as string) === "tts" && (
+                  <div className="space-y-2">
+                    <Label htmlFor="audio-voice">Voice</Label>
+                    <Select value={(d.voice as string) ?? "alloy"} onValueChange={(v) => handleChange("voice", v)}>
+                      <SelectTrigger id="audio-voice"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="alloy">Alloy</SelectItem>
+                        <SelectItem value="echo">Echo</SelectItem>
+                        <SelectItem value="fable">Fable</SelectItem>
+                        <SelectItem value="onyx">Onyx</SelectItem>
+                        <SelectItem value="nova">Nova</SelectItem>
+                        <SelectItem value="shimmer">Shimmer</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+                <div className="space-y-2">
+                  <Label htmlFor="audio-input">{(d.audioAction as string) === "tts" ? "Text to speak" : "Audio URL"}</Label>
+                  <Textarea id="audio-input" value={(d.template as string) ?? ""} onChange={(e) => handleChange("template", e.target.value)} placeholder={(d.audioAction as string) === "tts" ? "Hello, welcome to Pilox!" : "https://example.com/audio.wav"} rows={3} />
+                </div>
+              </>
+            )}
+
             {/* ── Advanced: timeout & retries (most types) ── */}
             {!["start", "end", "router"].includes(stepType) && (
               <div className="space-y-4 border-t pt-4">
