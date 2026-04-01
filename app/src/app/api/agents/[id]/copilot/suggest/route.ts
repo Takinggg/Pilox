@@ -9,20 +9,24 @@ import { z } from "zod";
 
 const log = createModuleLogger("api.agents.copilot");
 
-const COPILOT_SYSTEM_PROMPT = `You are the Pilox canvas copilot. You MUST only use these exact Hive runtime images — never invent new ones:
-hive/http-input:latest, hive/http-output:latest, hive/llm-agent:latest, hive/llm-chain:latest, hive/rag-agent:latest, hive/embedding-agent:latest, hive/tool-agent:latest, hive/memory-agent:latest, hive/doc-loader:latest, hive/text-processor:latest, hive/output-parser:latest, hive/prompt-template:latest, hive/api-caller:latest, hive/code-runner:latest, hive/router-agent:latest, hive/iterator-agent:latest, hive/db-connector:latest, hive/redis-connector:latest, hive/generic-agent:latest.
+const VALID_NODE_TYPES = [
+  "llm", "agent", "prompt", "rag", "memory", "tool",
+  "http", "code", "transform", "router", "loop",
+  "embedding", "classifier", "image_gen", "audio", "end",
+] as const;
 
-Available canvas node types: llm, agent, prompt, rag, memory, tool, http, code, transform, router, loop, embedding, classifier, image_gen, audio, end.
+const COPILOT_SYSTEM_PROMPT = `You are Pilox Copilot — a workflow builder assistant.
 
-When suggesting nodes, respond ONLY with valid JSON (no markdown):
-{
-  "suggestions": [
-    { "nodeType": "string", "label": "string", "reasoning": "string" }
-  ],
-  "connections": [
-    { "from": "existing-node-id-or-new", "to": "existing-node-id-or-new" }
-  ]
-}`;
+RULES:
+1. Only use these nodeType values: ${VALID_NODE_TYPES.join(", ")}
+2. Reply with ONLY a JSON object, nothing else — no explanation, no markdown.
+3. Each suggestion must have: nodeType (from the list above), label (short display name), reasoning (one sentence why).
+
+RESPONSE FORMAT (strictly follow this, no other text):
+{"suggestions":[{"nodeType":"llm","label":"Chat LLM","reasoning":"Generates responses from user input"},{"nodeType":"rag","label":"Doc Search","reasoning":"Retrieves relevant document chunks"}]}
+
+EXAMPLE — user asks "RAG chatbot with memory":
+{"suggestions":[{"nodeType":"http","label":"HTTP Input","reasoning":"Receives user messages"},{"nodeType":"memory","label":"Load History","reasoning":"Reads conversation buffer"},{"nodeType":"rag","label":"Doc Search","reasoning":"Retrieves relevant PDF chunks"},{"nodeType":"llm","label":"Answer LLM","reasoning":"Generates grounded answer from context"},{"nodeType":"memory","label":"Save History","reasoning":"Stores new exchange"},{"nodeType":"http","label":"HTTP Output","reasoning":"Returns response to user"}]}`;
 
 const suggestSchema = z.object({
   nodes: z.array(
@@ -80,7 +84,7 @@ export async function POST(
             { role: "user", content: userPrompt },
           ],
           stream: false,
-          options: { temperature: 0.3, num_predict: 1024 },
+          options: { temperature: 0.2, num_predict: 512 },
         }),
       });
 
@@ -91,7 +95,7 @@ export async function POST(
 
       const json = await res.json();
       const content = json.message?.content || "";
-      const suggestions = parsesuggestions(content);
+      const suggestions = parseSuggestions(content);
 
       return NextResponse.json({ suggestions, raw: content });
     } catch (err) {
@@ -106,41 +110,88 @@ function buildUserPrompt(
   edges: { source: string; target: string }[],
   intent: string,
 ): string {
-  const nodesSummary = nodes
-    .map((n) => `${n.id}: ${n.type || "unknown"} (${n.label || "unlabeled"})`)
-    .join("\n  ");
+  const hasNodes = nodes.length > 0;
+  const ctx = hasNodes
+    ? `Current nodes: ${nodes.map((n) => `${n.type || "?"}(${n.label || n.id})`).join(", ")}. Connections: ${edges.map((e) => `${e.source}->${e.target}`).join(", ") || "none"}.`
+    : "Empty canvas.";
 
-  const edgesSummary = edges
-    .map((e) => `${e.source} -> ${e.target}`)
-    .join("\n  ");
-
-  return `Current workflow:
-  Nodes:
-  ${nodesSummary || "(empty canvas)"}
-  Connections:
-  ${edgesSummary || "(none)"}
-
-User wants: "${intent}"
-
-Suggest nodes to add and how to connect them.`;
+  return `${ctx}\nUser wants: "${intent}"\nRespond with JSON only.`;
 }
 
-function parsesuggestions(content: string): Array<{
+const validNodeTypeSet = new Set<string>(VALID_NODE_TYPES);
+
+function parseSuggestions(content: string): Array<{
   nodeType: string;
   label: string;
   reasoning: string;
 }> {
   try {
-    const jsonMatch = content.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) return [];
+    // Try to extract JSON from the response
+    const jsonMatch = content.match(/\{[\s\S]*"suggestions"[\s\S]*\}/);
+    if (!jsonMatch) {
+      // Try parsing the whole content as JSON
+      const direct = JSON.parse(content.trim());
+      if (Array.isArray(direct.suggestions)) {
+        return filterSuggestions(direct.suggestions);
+      }
+      return [];
+    }
     const parsed = JSON.parse(jsonMatch[0]);
     if (Array.isArray(parsed.suggestions)) {
-      return parsed.suggestions.filter(
-        (s: Record<string, unknown>) => s.nodeType && s.label,
-      );
+      return filterSuggestions(parsed.suggestions);
     }
     return [];
   } catch {
+    // Last resort: try to find individual suggestion objects
+    try {
+      const arrayMatch = content.match(/\[[\s\S]*\]/);
+      if (arrayMatch) {
+        const arr = JSON.parse(arrayMatch[0]);
+        if (Array.isArray(arr)) return filterSuggestions(arr);
+      }
+    } catch { /* ignore */ }
     return [];
   }
+}
+
+function filterSuggestions(
+  raw: Array<Record<string, unknown>>,
+): Array<{ nodeType: string; label: string; reasoning: string }> {
+  return raw
+    .filter((s) => s.nodeType && s.label)
+    .map((s) => ({
+      nodeType: validNodeTypeSet.has(s.nodeType as string)
+        ? (s.nodeType as string)
+        : mapToValidType(s.nodeType as string),
+      label: String(s.label),
+      reasoning: String(s.reasoning || ""),
+    }))
+    .filter((s) => s.nodeType !== "unknown");
+}
+
+/** Best-effort mapping of hallucinated types to valid ones */
+function mapToValidType(raw: string): string {
+  const lower = raw.toLowerCase().replace(/[_-]/g, "");
+  const map: Record<string, string> = {
+    llmagent: "llm", llmcall: "llm", chat: "llm", chatbot: "llm",
+    ragagent: "rag", ragsearch: "rag", vectorstore: "rag", retriever: "rag", docsearch: "rag",
+    memoryagent: "memory", memorystore: "memory", buffer: "memory", conversationmemory: "memory",
+    httpinput: "http", httpoutput: "http", httprequest: "http", webhook: "http", apicaller: "http",
+    coderunner: "code", codegen: "code", javascript: "code",
+    routeragent: "router", condition: "router", ifelse: "router", branch: "router",
+    iteratoragent: "loop", foreach: "loop", iteration: "loop",
+    embeddingagent: "embedding", vectorembedding: "embedding",
+    toolagent: "tool", mcp: "tool", functioncall: "tool",
+    textprocessor: "transform", datatransform: "transform",
+    outputparser: "transform", jsonparser: "transform",
+    prompttemplate: "prompt", systemprompt: "prompt",
+    imagegen: "image_gen", dalle: "image_gen", stablediffusion: "image_gen",
+    speechtotext: "audio", texttospeech: "audio", whisper: "audio", tts: "audio",
+    textclassification: "classifier", classify: "classifier",
+    docloader: "llm", pdfloader: "llm",
+    start: "http", end: "end",
+    vectorstoreretriever: "rag", similaritysearch: "rag", answergenerator: "llm",
+    httprequesthandler: "http", returnresponse: "http",
+  };
+  return map[lower] || "unknown";
 }
