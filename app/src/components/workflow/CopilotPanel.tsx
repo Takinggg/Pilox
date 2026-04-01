@@ -26,7 +26,7 @@ function resolveNodeType(stepType: string): WfNodeType {
 }
 
 export function CopilotPanel({ agentId }: { agentId: string }) {
-  const { nodes, edges, addNode } = useWorkflow();
+  const { nodes, edges, addNode, setNodes, setEdges } = useWorkflow();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [input, setInput] = useState("");
@@ -98,6 +98,49 @@ export function CopilotPanel({ agentId }: { agentId: string }) {
     });
   }, [nodes, addNode]);
 
+  const applyAllSuggestions = useCallback((suggestions: Suggestion[]) => {
+    if (suggestions.length === 0) return;
+
+    // Find the last real node (not addButton) to chain from
+    const realNodes = nodes.filter((n) => n.type === WfNodeType.STEP || n.type === WfNodeType.ROUTER);
+    const lastReal = realNodes[realNodes.length - 1];
+    const startX = lastReal ? lastReal.position.x : 300;
+    let currentY = lastReal ? lastReal.position.y + 140 : 100;
+    let prevNodeId = lastReal?.id || null;
+
+    const newNodes: typeof nodes = [];
+    const newEdges: typeof edges = [];
+
+    for (const s of suggestions) {
+      const nodeId = `${s.nodeType}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+      newNodes.push({
+        id: nodeId,
+        type: resolveNodeType(s.nodeType),
+        position: { x: Math.round(startX / 16) * 16, y: Math.round(currentY / 16) * 16 },
+        data: { stepType: s.nodeType, label: s.label },
+        draggable: true,
+      });
+
+      // Connect to previous node
+      if (prevNodeId) {
+        newEdges.push({
+          id: `edge-${prevNodeId}-${nodeId}`,
+          source: prevNodeId,
+          target: nodeId,
+          type: "straightLine",
+          data: { parentStepId: prevNodeId },
+        });
+      }
+
+      prevNodeId = nodeId;
+      currentY += 140;
+    }
+
+    // Batch add all nodes and edges
+    setNodes((prev) => [...prev, ...newNodes]);
+    setEdges((prev) => [...prev, ...newEdges]);
+  }, [nodes, edges, setNodes, setEdges]);
+
   if (copilotReady === null || copilotReady === false) return null;
 
   if (!open) {
@@ -140,6 +183,15 @@ export function CopilotPanel({ agentId }: { agentId: string }) {
             <div className={`max-w-[85%] rounded-xl px-3 py-2 text-sm ${msg.role === "user" ? "bg-primary text-primary-foreground" : "bg-card text-foreground"}`}>
               {msg.role === "assistant" && msg.suggestions && msg.suggestions.length > 0 ? (
                 <div className="space-y-2">
+                  {/* Apply all button */}
+                  {msg.suggestions.length > 1 && (
+                    <button
+                      onClick={() => applyAllSuggestions(msg.suggestions!)}
+                      className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-primary/30 bg-primary/10 px-3 py-2 text-xs font-semibold text-primary transition-colors hover:bg-primary/20"
+                    >
+                      <Plus size={14} /> Apply entire pipeline ({msg.suggestions.length} nodes + edges)
+                    </button>
+                  )}
                   {msg.suggestions.map((s, j) => (
                     <div key={j} className="rounded-lg border border-border bg-[var(--pilox-elevated)] p-2">
                       <div className="mb-1 flex items-center justify-between">
