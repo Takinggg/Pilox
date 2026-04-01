@@ -27,8 +27,18 @@ export async function executeLlmNode(
   if (systemPrompt) messages.push({ role: "system", content: substituteVariables(systemPrompt, variables) });
   messages.push({ role: "user", content: userContent });
 
-  // Route to appropriate provider
-  const resolvedProvider = provider ?? "ollama";
+  // Route to appropriate provider — auto-detect vLLM availability
+  let resolvedProvider = provider ?? "ollama";
+  if (resolvedProvider === "ollama" || resolvedProvider === "auto") {
+    // If the model looks like a HuggingFace ID (contains /), try vLLM first
+    if (String(model).includes("/")) {
+      try {
+        const vllmUrl = process.env.VLLM_URL || "http://vllm:8000";
+        const probe = await fetch(`${vllmUrl}/v1/models`, { signal: AbortSignal.timeout(2000) });
+        if (probe.ok) resolvedProvider = "vllm";
+      } catch { /* vLLM not available, fall back to ollama */ }
+    }
+  }
   let url: string;
   let body: Record<string, unknown>;
   const headers: Record<string, string> = { "Content-Type": "application/json" };

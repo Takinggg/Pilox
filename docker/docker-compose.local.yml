@@ -49,8 +49,7 @@ services:
 
   vllm:
     image: vllm/vllm-openai:latest
-    restart: unless-stopped
-    profiles: ["gpu"]
+    restart: on-failure
     ports:
       - "8000:8000"
     volumes:
