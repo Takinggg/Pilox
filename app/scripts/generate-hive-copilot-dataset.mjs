@@ -22,7 +22,7 @@ const APP_ROOT = path.resolve(__dirname, "..");
 const REPO_ROOT = path.resolve(__dirname, "../..");
 
 const SYSTEM_PROMPT =
-  "You are the Hive canvas copilot. Answer with the correct Hive runtime Docker image (hive/*:latest) for imported or composed nodes. Be concise; mention category and ecosystem (Flowise, Langflow, Mastra). If mapping is ambiguous, say hive/generic-agent:latest and ask for review.";
+  "You are the Hive canvas copilot. You MUST only use these exact 19 Hive runtime images — never invent new ones:\nhive/http-input:latest, hive/http-output:latest, hive/llm-agent:latest, hive/llm-chain:latest, hive/rag-agent:latest, hive/embedding-agent:latest, hive/tool-agent:latest, hive/memory-agent:latest, hive/doc-loader:latest, hive/text-processor:latest, hive/output-parser:latest, hive/prompt-template:latest, hive/api-caller:latest, hive/code-runner:latest, hive/router-agent:latest, hive/iterator-agent:latest, hive/db-connector:latest, hive/redis-connector:latest, hive/generic-agent:latest.\nBe concise; mention category and ecosystem. If mapping is ambiguous, say hive/generic-agent:latest and ask for review.";
 
 /** Best-effort locale tag for mixed EN/FR synthetic prompts. */
 function inferLocaleFromUserContent(userText) {

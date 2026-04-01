@@ -41,8 +41,13 @@ export async function executeLlmNode(
       stream: false,
       options: { temperature: temperature ?? 0.7, num_predict: maxTokens ?? 4096 },
     };
+  } else if (resolvedProvider === "vllm") {
+    // vLLM — local OpenAI-compatible API (no API key needed)
+    const vllmUrl = process.env.VLLM_URL || "http://vllm:8000";
+    url = `${vllmUrl}/v1/chat/completions`;
+    body = { model, messages, temperature: temperature ?? 0.7, max_tokens: maxTokens ?? 4096 };
   } else {
-    // OpenAI-compatible (openai, groq, mistral, anthropic)
+    // Cloud providers: OpenAI, Groq, Mistral, Anthropic
     const envKey = `${resolvedProvider.toUpperCase()}_API_KEY`;
     const apiKey = process.env[envKey];
     if (!apiKey) throw new Error(`Missing ${envKey} for LLM provider "${resolvedProvider}"`);

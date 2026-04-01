@@ -57,6 +57,10 @@ export interface ModelEntry {
   released: string;
   /** Ollama model name (if available) */
   ollamaId?: string;
+  /** vLLM / HuggingFace model ID (if available) */
+  vllmId?: string;
+  /** HuggingFace model ID for direct link */
+  huggingFaceId?: string;
   /** Whether this is an editorial recommendation */
   recommended?: boolean;
 }
@@ -1961,6 +1965,8 @@ export const MODEL_CATALOG: ModelEntry[] = [
     license: "MIT",
     released: "2023-01",
     ollamaId: undefined,
+    vllmId: "cross-encoder/nli-deberta-v3-large",
+    huggingFaceId: "cross-encoder/nli-deberta-v3-large",
   },
   {
     id: "modernbert-large",
@@ -1976,6 +1982,8 @@ export const MODEL_CATALOG: ModelEntry[] = [
     strengths: ["8K context (vs 512 for BERT)", "Flash Attention 2", "Apache 2.0", "Drop-in BERT replacement"],
     weaknesses: ["Not generative"],
     license: "Apache 2.0",
+    vllmId: "answerdotai/ModernBERT-large",
+    huggingFaceId: "answerdotai/ModernBERT-large",
     released: "2024-12",
     ollamaId: undefined,
     recommended: true,
@@ -1996,6 +2004,8 @@ export const MODEL_CATALOG: ModelEntry[] = [
     license: "MIT",
     released: "2019-07",
     ollamaId: undefined,
+    vllmId: "FacebookAI/roberta-large-mnli",
+    huggingFaceId: "FacebookAI/roberta-large-mnli",
   },
   {
     id: "bert-base-uncased",
@@ -2013,6 +2023,8 @@ export const MODEL_CATALOG: ModelEntry[] = [
     license: "Apache 2.0",
     released: "2018-10",
     ollamaId: undefined,
+    vllmId: "google-bert/bert-base-uncased",
+    huggingFaceId: "google-bert/bert-base-uncased",
   },
   {
     id: "distilbert-base",
@@ -2030,6 +2042,8 @@ export const MODEL_CATALOG: ModelEntry[] = [
     license: "Apache 2.0",
     released: "2019-08",
     ollamaId: undefined,
+    vllmId: "distilbert/distilbert-base-uncased",
+    huggingFaceId: "distilbert/distilbert-base-uncased",
   },
   {
     id: "xlm-roberta-large",
@@ -2047,6 +2061,8 @@ export const MODEL_CATALOG: ModelEntry[] = [
     license: "MIT",
     released: "2019-11",
     ollamaId: undefined,
+    vllmId: "FacebookAI/xlm-roberta-large",
+    huggingFaceId: "FacebookAI/xlm-roberta-large",
   },
 
   // ╔══════════════════════════════════════════════════╗
@@ -2234,14 +2250,14 @@ export function filterModels(opts: {
   tier?: HardwareTier | "all";
   search?: string;
   recommendedOnly?: boolean;
-  /** If true, include models without ollamaId. Default: false (only show pullable models). */
-  includeNonOllama?: boolean;
+  /** If true, include models without any local backend. Default: false (only show usable models). */
+  includeNonLocal?: boolean;
 }): ModelEntry[] {
   let results = MODEL_CATALOG;
 
-  // By default, only show models that can be pulled via Ollama
-  if (!opts.includeNonOllama) {
-    results = results.filter((m) => !!m.ollamaId);
+  // By default, only show models that can run locally (Ollama or vLLM)
+  if (!opts.includeNonLocal) {
+    results = results.filter((m) => !!m.ollamaId || !!m.vllmId);
   }
 
   if (opts.category && opts.category !== "all") {

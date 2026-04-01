@@ -66,7 +66,7 @@ def main() -> int:
     ap.add_argument("--adapter", type=Path, default=None, help="PEFT adapter dir (from train_lora.py save)")
     ap.add_argument("--base-only", action="store_true", help="Do not load LoRA adapter")
     ap.add_argument("--max-samples", type=int, default=None)
-    ap.add_argument("--max-new-tokens", type=int, default=512)
+    ap.add_argument("--max-new-tokens", type=int, default=1024)
     args = ap.parse_args()
 
     try:

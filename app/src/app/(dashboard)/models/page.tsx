@@ -582,18 +582,13 @@ export default function ModelsPage() {
                             className="flex h-8 items-center gap-1.5 rounded-lg border border-border px-3 text-[11px] text-[var(--pilox-fg-secondary)] hover:border-primary hover:text-primary disabled:opacity-40"
                           >
                             {isDownloading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Download className="h-3 w-3" />}
-                            {isDownloading ? "Pulling..." : "Pull"}
+                            {isDownloading ? "Pulling..." : "Pull (Ollama)"}
                           </button>
-                        ) : model.huggingFaceId ? (
-                          <a
-                            href={`https://huggingface.co/${model.huggingFaceId}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex h-8 items-center gap-1.5 rounded-lg border border-border px-3 text-[11px] text-[var(--pilox-fg-secondary)] hover:border-primary hover:text-primary"
-                          >
-                            <ExternalLink className="h-3 w-3" />
-                            HuggingFace
-                          </a>
+                        ) : model.vllmId ? (
+                          <span className="flex items-center gap-1.5 text-[10px] text-[var(--pilox-blue)]">
+                            <Cpu className="h-3 w-3" />
+                            vLLM ready
+                          </span>
                         ) : (
                           <span className="text-[10px] text-muted-foreground opacity-50">Manual only</span>
                         )}

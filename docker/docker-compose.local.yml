@@ -39,11 +39,32 @@ services:
     volumes:
       - pilox_ollama_data:/root/.ollama
     healthcheck:
-      test: ["CMD-SHELL", "curl -sf http://127.0.0.1:11434/api/tags || exit 1"]
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:11434/api/tags || exit 1"]
       interval: 15s
       timeout: 5s
       retries: 5
       start_period: 30s
+    networks:
+      - pilox-network
+
+  vllm:
+    image: vllm/vllm-openai:latest
+    restart: unless-stopped
+    profiles: ["vllm"]
+    ports:
+      - "8000:8000"
+    volumes:
+      - pilox_vllm_data:/root/.cache/huggingface
+    environment:
+      HUGGING_FACE_HUB_TOKEN: ${HUGGING_FACE_HUB_TOKEN:-}
+    command: ["--host", "0.0.0.0", "--port", "8000"]
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
     networks:
       - pilox-network
 
@@ -64,6 +85,7 @@ services:
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-admin}
       DOCKER_HOST: /var/run/docker.sock
       OLLAMA_URL: http://ollama:11434
+      VLLM_URL: http://vllm:8000
       # PEFT adapter baked into image (npm run dataset:fetch-modal-lora before docker build)
       PILOX_COPILOT_LORA_PATH: /app/models/hive-copilot-lora/lora-hive-copilot
       NODE_ENV: production
@@ -160,6 +182,7 @@ volumes:
   pilox_redis_data:
   pilox_marketplace_node_state:
   pilox_ollama_data:
+  pilox_vllm_data:
 
 networks:
   pilox-network:
