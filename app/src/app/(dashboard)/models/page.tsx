@@ -585,10 +585,15 @@ export default function ModelsPage() {
                             {isDownloading ? "Pulling..." : "Pull (Ollama)"}
                           </button>
                         ) : model.vllmId ? (
-                          <span className="flex items-center gap-1.5 text-[10px] text-[var(--pilox-blue)]">
-                            <Cpu className="h-3 w-3" />
-                            vLLM ready
-                          </span>
+                          <a
+                            href={`https://huggingface.co/${model.vllmId}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex h-8 items-center gap-1.5 rounded-lg border border-[var(--pilox-blue)]/30 px-3 text-[11px] text-[var(--pilox-blue)] hover:border-[var(--pilox-blue)] hover:bg-[var(--pilox-blue)]/5"
+                          >
+                            <Download className="h-3 w-3" />
+                            Get model
+                          </a>
                         ) : model.huggingFaceId ? (
                           <a
                             href={`https://huggingface.co/${model.huggingFaceId}`}
