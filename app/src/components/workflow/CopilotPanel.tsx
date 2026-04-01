@@ -61,8 +61,8 @@ export function CopilotPanel({ agentId }: { agentId: string }) {
       .catch(() => {});
     // Fetch current copilot model config
     fetch("/api/copilot/model", { credentials: "include" })
-      .then((r) => r.ok ? r.json() : {})
-      .then((d) => {
+      .then((r) => r.ok ? r.json() : { model: "", provider: "auto" })
+      .then((d: { model?: string; provider?: string }) => {
         if (d.model) setSelectedModel({ model: d.model, provider: d.provider || "auto" });
       })
       .catch(() => {});
