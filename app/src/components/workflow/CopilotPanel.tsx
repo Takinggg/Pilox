@@ -3,7 +3,7 @@
 import { useCallback, useState, useRef, useEffect } from "react";
 import { useWorkflow } from "./WorkflowContext";
 import { WfNodeType } from "./types";
-import { Bot, Send, Loader2, Plus, X, ChevronUp, ChevronDown } from "lucide-react";
+import { Bot, Send, Loader2, Plus, X } from "lucide-react";
 
 interface Suggestion {
   nodeType: string;
@@ -34,27 +34,20 @@ export function CopilotPanel({ agentId }: { agentId: string }) {
   const [copilotReady, setCopilotReady] = useState<boolean | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // Check if copilot model is loaded in Ollama
   useEffect(() => {
     fetch("/api/copilot", { credentials: "include" })
-      .then((r) => {
-        if (!r.ok) return { enabled: false };
-        return r.json();
-      })
+      .then((r) => (r.ok ? r.json() : { enabled: false }))
       .then((data) => setCopilotReady(data.enabled === true))
       .catch(() => setCopilotReady(false));
   }, []);
 
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
+    if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
   }, [messages]);
 
   const submit = useCallback(async () => {
     const intent = input.trim();
     if (!intent || loading) return;
-
     setInput("");
     setMessages((prev) => [...prev, { role: "user", content: intent }]);
     setLoading(true);
@@ -67,90 +60,51 @@ export function CopilotPanel({ agentId }: { agentId: string }) {
         body: JSON.stringify({
           nodes: nodes
             .filter((n) => n.type === WfNodeType.STEP || n.type === WfNodeType.ROUTER)
-            .map((n) => ({
-              id: n.id,
-              type: (n.data as Record<string, unknown>).stepType as string,
-              label: (n.data as Record<string, unknown>).label as string,
-            })),
+            .map((n) => ({ id: n.id, type: (n.data as Record<string, unknown>).stepType as string, label: (n.data as Record<string, unknown>).label as string })),
           edges: edges.map((e) => ({ source: e.source, target: e.target })),
           userIntent: intent,
         }),
       });
 
       if (!res.ok) {
-        setMessages((prev) => [
-          ...prev,
-          { role: "assistant", content: "Copilot is unavailable. Make sure the model is running in Ollama." },
-        ]);
+        setMessages((prev) => [...prev, { role: "assistant", content: "Copilot is unavailable. Make sure the model is running in Ollama." }]);
         return;
       }
 
       const data = await res.json();
       const suggestions: Suggestion[] = data.suggestions || [];
-
-      setMessages((prev) => [
-        ...prev,
-        {
-          role: "assistant",
-          content: data.raw || (suggestions.length ? `I suggest ${suggestions.length} node(s):` : "No suggestions for this request."),
-          suggestions,
-        },
-      ]);
+      setMessages((prev) => [...prev, {
+        role: "assistant",
+        content: data.raw || (suggestions.length ? `I suggest ${suggestions.length} node(s):` : "No suggestions for this request."),
+        suggestions,
+      }]);
     } catch {
-      setMessages((prev) => [
-        ...prev,
-        { role: "assistant", content: "Network error — is the server running?" },
-      ]);
+      setMessages((prev) => [...prev, { role: "assistant", content: "Network error — is the server running?" }]);
     } finally {
       setLoading(false);
     }
   }, [agentId, nodes, edges, input, loading]);
 
-  const applySuggestion = useCallback(
-    (suggestion: Suggestion) => {
-      const lastNode = nodes[nodes.length - 1];
-      const baseX = lastNode ? lastNode.position.x : 400;
-      const baseY = lastNode ? lastNode.position.y + 120 : 200;
+  const applySuggestion = useCallback((suggestion: Suggestion) => {
+    const lastNode = nodes[nodes.length - 1];
+    const baseX = lastNode ? lastNode.position.x : 400;
+    const baseY = lastNode ? lastNode.position.y + 120 : 200;
+    addNode({
+      id: `${suggestion.nodeType}-${Date.now()}`,
+      type: resolveNodeType(suggestion.nodeType),
+      position: { x: Math.round(baseX / 16) * 16, y: Math.round(baseY / 16) * 16 },
+      data: { stepType: suggestion.nodeType, label: suggestion.label },
+      draggable: true,
+    });
+  }, [nodes, addNode]);
 
-      const newNode = {
-        id: `${suggestion.nodeType}-${Date.now()}`,
-        type: resolveNodeType(suggestion.nodeType),
-        position: {
-          x: Math.round(baseX / 16) * 16,
-          y: Math.round(baseY / 16) * 16,
-        },
-        data: {
-          stepType: suggestion.nodeType,
-          label: suggestion.label,
-        },
-        draggable: true,
-      };
-      addNode(newNode);
-    },
-    [nodes, addNode],
-  );
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      submit();
-    }
-  };
-
-  // Don't render anything if copilot is not enabled/loaded
   if (copilotReady === null || copilotReady === false) return null;
 
   if (!open) {
     return (
       <button
         onClick={() => setOpen(true)}
-        className="fixed bottom-6 right-6 z-50 flex items-center gap-2 px-4 py-2.5 rounded-full shadow-lg transition-all hover:scale-105"
-        style={{
-          backgroundColor: "var(--primary)",
-          color: "white",
-          fontWeight: 500,
-          fontSize: "0.875rem",
-        }}
+        className="fixed bottom-6 right-6 z-50 flex items-center gap-2 rounded-full bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground shadow-lg transition-all hover:scale-105"
       >
         <Bot size={18} />
         Copilot
@@ -159,78 +113,45 @@ export function CopilotPanel({ agentId }: { agentId: string }) {
   }
 
   return (
-    <div
-      className="fixed bottom-6 right-6 z-50 flex flex-col rounded-2xl shadow-2xl border border-[var(--border)] overflow-hidden"
-      style={{
-        width: 380,
-        height: 480,
-        backgroundColor: "var(--background)",
-      }}
-    >
+    <div className="fixed bottom-6 right-6 z-50 flex w-[380px] flex-col overflow-hidden rounded-2xl border border-border bg-background shadow-2xl" style={{ height: 480 }}>
       {/* Header */}
-      <div
-        className="flex items-center justify-between px-4 py-3 border-b border-[var(--border)]"
-        style={{ backgroundColor: "var(--card)" }}
-      >
+      <div className="flex items-center justify-between border-b border-border bg-card px-4 py-3">
         <div className="flex items-center gap-2">
-          <Bot size={18} className="text-[var(--primary)]" />
-          <span className="text-sm" style={{ fontWeight: 600 }}>
-            Copilot
-          </span>
+          <Bot size={18} className="text-primary" />
+          <span className="text-sm font-semibold text-foreground">Copilot</span>
         </div>
-        <button
-          onClick={() => setOpen(false)}
-          className="p-1 rounded hover:bg-[var(--surface-raised)] transition-colors"
-        >
-          <X size={16} className="text-[var(--muted)]" />
+        <button onClick={() => setOpen(false)} className="rounded p-1 text-muted-foreground transition-colors hover:bg-[var(--pilox-elevated)] hover:text-foreground">
+          <X size={16} />
         </button>
       </div>
 
       {/* Messages */}
-      <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
+      <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto px-4 py-3">
         {messages.length === 0 && (
-          <div className="text-center text-xs text-[var(--muted)] mt-8">
-            <Bot size={32} className="mx-auto mb-3 opacity-30" />
-            <p>Ask me to suggest nodes, build pipelines, or explain workflows.</p>
-            <p className="mt-1 opacity-70">e.g. "Add RAG with vector search"</p>
+          <div className="mt-8 text-center">
+            <Bot size={32} className="mx-auto mb-3 text-muted-foreground opacity-50" />
+            <p className="text-xs text-muted-foreground">Ask me to suggest nodes, build pipelines, or explain workflows.</p>
+            <p className="mt-1 text-xs text-muted-foreground opacity-70">e.g. &quot;Add RAG with vector search&quot;</p>
           </div>
         )}
 
         {messages.map((msg, i) => (
           <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
-            <div
-              className="max-w-[85%] rounded-xl px-3 py-2 text-sm"
-              style={{
-                backgroundColor: msg.role === "user" ? "var(--primary)" : "var(--card)",
-                color: msg.role === "user" ? "white" : "var(--foreground)",
-              }}
-            >
+            <div className={`max-w-[85%] rounded-xl px-3 py-2 text-sm ${msg.role === "user" ? "bg-primary text-primary-foreground" : "bg-card text-foreground"}`}>
               {msg.role === "assistant" && msg.suggestions && msg.suggestions.length > 0 ? (
                 <div className="space-y-2">
                   {msg.suggestions.map((s, j) => (
-                    <div
-                      key={j}
-                      className="rounded-lg border border-[var(--border)] p-2"
-                      style={{ backgroundColor: "var(--surface-raised)" }}
-                    >
-                      <div className="flex items-center justify-between mb-1">
-                        <span style={{ fontWeight: 600, fontSize: "0.8rem" }}>{s.label}</span>
-                        <span className="text-[0.65rem] px-1.5 py-0.5 rounded bg-[var(--primary)]/10 text-[var(--primary)]">
-                          {s.nodeType}
-                        </span>
+                    <div key={j} className="rounded-lg border border-border bg-[var(--pilox-elevated)] p-2">
+                      <div className="mb-1 flex items-center justify-between">
+                        <span className="text-xs font-semibold text-foreground">{s.label}</span>
+                        <span className="rounded bg-primary/10 px-1.5 py-0.5 text-[10px] text-primary">{s.nodeType}</span>
                       </div>
-                      <p className="text-xs text-[var(--muted)] mb-2">{s.reasoning}</p>
+                      <p className="mb-2 text-xs text-muted-foreground">{s.reasoning}</p>
                       <button
                         onClick={() => applySuggestion(s)}
-                        className="flex items-center gap-1 text-xs px-2 py-1 rounded-md transition-colors"
-                        style={{
-                          backgroundColor: "var(--primary)",
-                          color: "white",
-                          fontWeight: 500,
-                        }}
+                        className="flex items-center gap-1 rounded-md bg-primary px-2 py-1 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90"
                       >
-                        <Plus size={12} />
-                        Add to canvas
+                        <Plus size={12} /> Add to canvas
                       </button>
                     </div>
                   ))}
@@ -244,30 +165,29 @@ export function CopilotPanel({ agentId }: { agentId: string }) {
 
         {loading && (
           <div className="flex justify-start">
-            <div className="rounded-xl px-3 py-2" style={{ backgroundColor: "var(--card)" }}>
-              <Loader2 size={16} className="animate-spin text-[var(--primary)]" />
+            <div className="rounded-xl bg-card px-3 py-2">
+              <Loader2 size={16} className="animate-spin text-primary" />
             </div>
           </div>
         )}
       </div>
 
       {/* Input */}
-      <div className="px-3 py-3 border-t border-[var(--border)]" style={{ backgroundColor: "var(--card)" }}>
+      <div className="border-t border-border bg-card px-3 py-3">
         <div className="flex items-center gap-2">
           <input
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
+            onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); submit(); } }}
             placeholder="Ask copilot..."
             disabled={loading}
-            className="flex-1 px-3 py-2 text-sm rounded-lg border border-[var(--border)] bg-[var(--background)] outline-none focus:border-[var(--primary)] transition-colors"
+            className="flex-1 rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground outline-none transition-colors focus:border-primary"
           />
           <button
             onClick={submit}
             disabled={loading || !input.trim()}
-            className="p-2 rounded-lg transition-colors disabled:opacity-30"
-            style={{ backgroundColor: "var(--primary)", color: "white" }}
+            className="rounded-lg bg-primary p-2 text-primary-foreground transition-colors disabled:opacity-30"
           >
             <Send size={16} />
           </button>
