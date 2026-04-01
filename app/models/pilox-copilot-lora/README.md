@@ -1,7 +1,7 @@
 ---
 base_model: Qwen/Qwen2.5-7B-Instruct
 library_name: peft
-model_name: lora-hive-copilot
+model_name: lora-latest
 tags:
 - base_model:adapter:Qwen/Qwen2.5-7B-Instruct
 - lora
@@ -12,7 +12,7 @@ licence: license
 pipeline_tag: text-generation
 ---
 
-# Model Card for lora-hive-copilot
+# Model Card for lora-latest
 
 This model is a fine-tuned version of [Qwen/Qwen2.5-7B-Instruct](https://huggingface.co/Qwen/Qwen2.5-7B-Instruct).
 It has been trained using [TRL](https://github.com/huggingface/trl).
@@ -40,9 +40,9 @@ This model was trained with SFT.
 
 - PEFT 0.18.1
 - TRL: 0.29.1
-- Transformers: 5.3.0
-- Pytorch: 2.11.0
-- Datasets: 4.8.4
+- Transformers: 4.57.6
+- Pytorch: 2.10.0+cu126
+- Datasets: 4.6.1
 - Tokenizers: 0.22.2
 
 ## Citations
@@ -54,7 +54,7 @@ Cite TRL as:
 ```bibtex
 @software{vonwerra2020trl,
   title   = {{TRL: Transformers Reinforcement Learning}},
-  author  = {von Werra, Leandro and Belkada, Younes and Tunstall, Lewis and Beeching, Edward and Thrush, Tristan and Lambert, Nathan and Huang, Shengyi and Rasul, Kashif and Gallouédec, Quentin},
+  author  = {von Werra, Leandro and Belkada, Younes and Tunstall, Lewis and Beeching, Edward and Thrush, Tristan and Lambert, Nathan and Huang, Shengyi and Rasul, Kashif and GallouÃ©dec, Quentin},
   license = {Apache-2.0},
   url     = {https://github.com/huggingface/trl},
   year    = {2020}

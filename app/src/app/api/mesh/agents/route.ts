@@ -33,7 +33,7 @@ export async function GET(req: Request) {
     if (!authResult.authorized) return authResult.response;
 
     const ip = await getClientIp();
-    const rl = await checkRateLimit(ip, "federation");
+    const rl = await checkRateLimit(ip, "api");
     if (!rl.allowed) return rateLimitResponse(rl);
 
     const url = new URL(req.url);
