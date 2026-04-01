@@ -9,6 +9,7 @@ interface Suggestion {
   nodeType: string;
   label: string;
   reasoning: string;
+  config?: Record<string, unknown>;
 }
 
 interface CopilotMessage {
@@ -93,7 +94,7 @@ export function CopilotPanel({ agentId }: { agentId: string }) {
       id: `${suggestion.nodeType}-${Date.now()}`,
       type: resolveNodeType(suggestion.nodeType),
       position: { x: Math.round(baseX / 16) * 16, y: Math.round(baseY / 16) * 16 },
-      data: { stepType: suggestion.nodeType, label: suggestion.label },
+      data: { stepType: suggestion.nodeType, label: suggestion.label, ...(suggestion.config ?? {}) },
       draggable: true,
     });
   }, [nodes, addNode]);
@@ -117,7 +118,7 @@ export function CopilotPanel({ agentId }: { agentId: string }) {
         id: nodeId,
         type: resolveNodeType(s.nodeType),
         position: { x: Math.round(startX / 16) * 16, y: Math.round(currentY / 16) * 16 },
-        data: { stepType: s.nodeType, label: s.label },
+        data: { stepType: s.nodeType, label: s.label, ...(s.config ?? {}) },
         draggable: true,
       });
 
