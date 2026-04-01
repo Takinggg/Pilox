@@ -11,17 +11,17 @@ const log = createModuleLogger("api.models.pull-vllm");
 
 const bodySchema = z.object({
   model: z.string().min(1).max(512),
-  quantization: z.enum(["auto", "vptq", "awq", "gptq", "none"]).default("auto"),
+  quantization: z.enum(["auto", "awq", "gptq", "fp8", "none"]).default("auto"),
   cpuOffloadGb: z.number().min(0).max(256).default(0),
 });
 
 /**
  * POST /api/models/pull-vllm
  *
- * Load a model in vLLM. For VPTQ models, vLLM auto-detects quantization.
+ * Load a model in vLLM. For AWQ models, vLLM auto-detects quantization.
  * This effectively changes the active vLLM model by restarting the service.
  *
- * For VPTQ 2-bit models: pass a HuggingFace model ID from VPTQ-community.
+ * For AWQ 2-bit models: pass a HuggingFace model ID from AWQ-community.
  * vLLM downloads and loads the model with --trust-remote-code.
  */
 export async function POST(req: Request) {
@@ -61,21 +61,21 @@ export async function POST(req: Request) {
     // For now, return the instructions for the user to update docker/.env
     // and restart. A future version will use the Docker API directly.
 
-    const isVptq = model.toLowerCase().includes("vptq") || quantization === "vptq";
-    const estimatedVram = isVptq ? "~18GB (2-bit VPTQ)" : "varies";
+    const isAwq = model.toLowerCase().includes("awq") || quantization === "awq";
+    const estimatedVram = isAwq ? "~35GB (AWQ 4-bit)" : "varies";
 
     return NextResponse.json({
       ok: true,
       model,
-      quantization: isVptq ? "vptq (auto-detected)" : quantization,
+      quantization: isAwq ? "awq (auto-detected)" : quantization,
       estimatedVram,
       cpuOffloadGb,
       instructions: {
         step1: `Set VLLM_MODEL=${model} in docker/.env`,
         step2: cpuOffloadGb > 0 ? `Set VLLM_CPU_OFFLOAD_GB=${cpuOffloadGb}` : null,
         step3: "Run: docker compose -f docker/docker-compose.local.yml --env-file docker/.env up -d --force-recreate vllm",
-        note: isVptq
-          ? "VPTQ 2-bit quantization auto-detected. TurboQuant KV cache compression also active."
+        note: isAwq
+          ? "AWQ 2-bit quantization auto-detected. TurboQuant KV cache compression also active."
           : "Standard model loading. TurboQuant KV cache compression active if supported.",
       },
     });

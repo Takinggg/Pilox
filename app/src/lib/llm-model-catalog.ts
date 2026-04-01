@@ -61,12 +61,10 @@ export interface ModelEntry {
   vllmId?: string;
   /** HuggingFace model ID for direct link */
   huggingFaceId?: string;
-  /** VPTQ 2-bit quantized model on HuggingFace (extreme compression) */
-  vptqModelId?: string;
-  /** VPTQ quantization bits */
-  vptqBits?: 2 | 4;
+  /** AWQ 4-bit quantized model on HuggingFace (vLLM native support) */
+  awqModelId?: string;
   /** Estimated VRAM per quantization level (GB) */
-  vramEstimate?: { fp16: number; q4: number; vptq2: number };
+  vramEstimate?: { fp16: number; q4: number; awq4: number };
   /** Whether this is an editorial recommendation */
   recommended?: boolean;
 }
@@ -94,9 +92,9 @@ export const MODEL_CATALOG: ModelEntry[] = [
     released: "2024-12",
     ollamaId: "llama3.3",
     recommended: true,
-    vptqModelId: "VPTQ-community/Meta-Llama-3.3-70B-Instruct-v16-k65536-65536-woft",
-    vptqBits: 2,
-    vramEstimate: { fp16: 140, q4: 40, vptq2: 18 },
+    awqModelId: "hugging-quants/Meta-Llama-3.3-70B-Instruct-AWQ-INT4",
+    
+    vramEstimate: { fp16: 140, q4: 40, awq4: 35 },
   },
   {
     id: "llama-3.2-3b",
@@ -166,9 +164,9 @@ export const MODEL_CATALOG: ModelEntry[] = [
     license: "Llama 3.1 Community",
     released: "2024-07",
     ollamaId: "llama3.1:70b",
-    vptqModelId: "VPTQ-community/Meta-Llama-3.1-70B-Instruct-v16-k65536-65536-woft",
-    vptqBits: 2,
-    vramEstimate: { fp16: 140, q4: 40, vptq2: 18 },
+    awqModelId: "hugging-quants/Meta-Llama-3.1-70B-Instruct-AWQ-INT4",
+    
+    vramEstimate: { fp16: 140, q4: 40, awq4: 35 },
   },
   {
     id: "llama-3.1-405b",
@@ -380,9 +378,9 @@ export const MODEL_CATALOG: ModelEntry[] = [
     license: "Apache 2.0",
     released: "2024-09",
     ollamaId: "qwen2.5:72b",
-    vptqModelId: "VPTQ-community/Qwen2.5-72B-Instruct-v16-k65536-65536-woft",
-    vptqBits: 2,
-    vramEstimate: { fp16: 144, q4: 42, vptq2: 19 },
+    awqModelId: "Qwen/Qwen2.5-72B-Instruct-AWQ",
+    
+    vramEstimate: { fp16: 144, q4: 42, awq4: 36 },
   },
   {
     id: "qwen-2.5-7b",
