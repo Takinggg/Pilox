@@ -45,11 +45,16 @@ function main() {
     ? fs.readFileSync(nodeDeepPath, "utf8").trim().split("\n").filter(Boolean)
     : [];
 
+  const canonicalPath = path.join(DATA, "gold-canonical-corrections.jsonl");
+  const canonical = fs.existsSync(canonicalPath)
+    ? fs.readFileSync(canonicalPath, "utf8").trim().split("\n").filter(Boolean)
+    : [];
+
   // Upsample gold/enriched/nodeDeep 20x to prevent synthetic dilution
   const goldUp = [];
-  const UPSAMPLE = 20;
+  const UPSAMPLE = 40;
   for (let i = 0; i < UPSAMPLE; i++) {
-    goldUp.push(...gold, ...enriched, ...nodeDeep);
+    goldUp.push(...gold, ...enriched, ...nodeDeep, ...canonical);
   }
 
   let lines = [...goldUp, ...syn, ...pub];

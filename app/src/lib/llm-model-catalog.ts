@@ -2234,8 +2234,15 @@ export function filterModels(opts: {
   tier?: HardwareTier | "all";
   search?: string;
   recommendedOnly?: boolean;
+  /** If true, include models without ollamaId. Default: false (only show pullable models). */
+  includeNonOllama?: boolean;
 }): ModelEntry[] {
   let results = MODEL_CATALOG;
+
+  // By default, only show models that can be pulled via Ollama
+  if (!opts.includeNonOllama) {
+    results = results.filter((m) => !!m.ollamaId);
+  }
 
   if (opts.category && opts.category !== "all") {
     results = results.filter((m) => m.category === opts.category || m.tags.includes(opts.category!));
