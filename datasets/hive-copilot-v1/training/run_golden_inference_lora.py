@@ -21,7 +21,10 @@ from pathlib import Path
 
 
 def repo_root() -> Path:
-    return Path(__file__).resolve().parents[3]
+    try:
+        return Path(__file__).resolve().parents[3]
+    except IndexError:
+        return Path.cwd()
 
 
 def load_golden(path: Path, max_samples: int | None) -> list[dict]:
