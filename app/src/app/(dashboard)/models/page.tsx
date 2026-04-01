@@ -533,8 +533,9 @@ export default function ModelsPage() {
               ) : (
                 filteredCatalog.map((model) => {
                   const ollamaName = model.ollamaId ?? model.id;
-                  const isInstalled = installedNames.has(ollamaName);
-                  const isDownloading = downloadStates.has(model.id) || downloadStates.has(ollamaName);
+                  const hfName = model.vllmId ? `hf.co/${model.vllmId}` : model.huggingFaceId ? `hf.co/${model.huggingFaceId}` : null;
+                  const isInstalled = installedNames.has(ollamaName) || (hfName ? installedNames.has(hfName) : false);
+                  const isDownloading = downloadStates.has(model.id) || downloadStates.has(ollamaName) || (hfName ? downloadStates.has(hfName) : false);
 
                   return (
                     <div key={model.id} className="flex items-center gap-4 border-b border-border/50 px-5 py-3 hover:bg-[var(--pilox-elevated)]/30">

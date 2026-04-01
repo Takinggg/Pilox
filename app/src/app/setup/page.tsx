@@ -58,6 +58,7 @@ export default function SetupPage() {
   const [networkDns, setNetworkDns] = useState("pilox.local");
   const [networkSubnet, setNetworkSubnet] = useState("172.26.0.0/16");
   const [enableGpu, setEnableGpu] = useState(false);
+  const [enableCopilot, setEnableCopilot] = useState(false);
   const [defaultCpu, setDefaultCpu] = useState("1.0");
   const [defaultMemory, setDefaultMemory] = useState("512m");
 
@@ -179,6 +180,7 @@ export default function SetupPage() {
           networkDns,
           networkSubnet,
           enableGpu,
+          enableCopilot,
           defaultCpu,
           defaultMemory,
         }),
@@ -186,6 +188,20 @@ export default function SetupPage() {
     } catch {
       // Non-critical — config API may not exist yet
     }
+
+    // Pull copilot model into Ollama if enabled
+    if (enableCopilot) {
+      try {
+        await fetch("/api/copilot", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "enable" }),
+        });
+      } catch {
+        // Non-critical — model can be loaded later from settings
+      }
+    }
+
     setLoading(false);
     setStep(6);
   }
@@ -631,6 +647,30 @@ export default function SetupPage() {
                     className="text-muted-foreground hover:text-[var(--pilox-fg-secondary)]"
                   >
                     {enableGpu ? (
+                      <div className="flex h-6 w-11 items-center rounded-full bg-primary px-0.5">
+                        <div className="ml-auto h-5 w-5 rounded-full bg-white" />
+                      </div>
+                    ) : (
+                      <div className="flex h-6 w-11 items-center rounded-full bg-[var(--pilox-border)] px-0.5">
+                        <div className="h-5 w-5 rounded-full bg-muted-foreground" />
+                      </div>
+                    )}
+                  </button>
+                </div>
+                <div className="flex items-center justify-between border border-border bg-[var(--pilox-bg-input)] px-4 py-3">
+                  <div className="flex flex-col">
+                    <span className="text-[13px] text-foreground">
+                      Canvas Copilot
+                    </span>
+                    <span className="text-[11px] text-muted-foreground">
+                      AI assistant that suggests nodes and pipelines (requires Ollama)
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => setEnableCopilot(!enableCopilot)}
+                    className="text-muted-foreground hover:text-[var(--pilox-fg-secondary)]"
+                  >
+                    {enableCopilot ? (
                       <div className="flex h-6 w-11 items-center rounded-full bg-primary px-0.5">
                         <div className="ml-auto h-5 w-5 rounded-full bg-white" />
                       </div>
