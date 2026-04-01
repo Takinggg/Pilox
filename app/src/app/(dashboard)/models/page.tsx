@@ -585,24 +585,11 @@ export default function ModelsPage() {
                             {isDownloading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Download className="h-3 w-3" />}
                             {isDownloading ? "Pulling..." : "Pull (Ollama)"}
                           </button>
-                        ) : model.vllmId ? (
-                          <button
-                            onClick={() => pullModel(`hf.co/${model.vllmId}`, model.id)}
-                            disabled={isDownloading}
-                            className="flex h-8 items-center gap-1.5 rounded-lg border border-[var(--pilox-blue)]/30 px-3 text-[11px] text-[var(--pilox-blue)] hover:border-[var(--pilox-blue)] hover:bg-[var(--pilox-blue)]/5 disabled:opacity-40"
-                          >
-                            {isDownloading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Download className="h-3 w-3" />}
-                            {isDownloading ? "Pulling..." : "Pull (HF)"}
-                          </button>
-                        ) : model.huggingFaceId ? (
-                          <button
-                            onClick={() => pullModel(`hf.co/${model.huggingFaceId}`, model.id)}
-                            disabled={isDownloading}
-                            className="flex h-8 items-center gap-1.5 rounded-lg border border-border px-3 text-[11px] text-[var(--pilox-fg-secondary)] hover:border-[var(--pilox-purple)] hover:text-[var(--pilox-purple)] disabled:opacity-40"
-                          >
-                            {isDownloading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Download className="h-3 w-3" />}
-                            {isDownloading ? "Pulling..." : "Pull (HF)"}
-                          </button>
+                        ) : (model.vllmId || model.huggingFaceId) ? (
+                          <span className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+                            <Cpu className="h-3 w-3" />
+                            Requires vLLM / GPU
+                          </span>
                         ) : (
                           <span className="text-[10px] text-muted-foreground opacity-50">Manual only</span>
                         )}
