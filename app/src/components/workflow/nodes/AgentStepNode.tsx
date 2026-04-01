@@ -13,7 +13,7 @@ import { Handle, Position, type NodeProps } from "@xyflow/react";
 import {
   Bot, Sparkles, GitBranch, Play, Trash2,
   Brain, FileText, Search, Wrench, Database,
-  Globe, Code2, Repeat,
+  Globe, Code2, Repeat, Binary, Tag, ImageIcon, Mic,
 } from "lucide-react";
 import { useWorkflow } from "../WorkflowContext";
 import { HANDLE_STYLING, NODE_SIZE } from "../constants";
@@ -34,6 +34,10 @@ const iconMap: Record<StepType, React.ReactNode> = {
   http: <Globe className="h-4 w-4" />,
   code: <Code2 className="h-4 w-4" />,
   loop: <Repeat className="h-4 w-4" />,
+  embedding: <Binary className="h-4 w-4" />,
+  classifier: <Tag className="h-4 w-4" />,
+  "image-gen": <ImageIcon className="h-4 w-4" />,
+  audio: <Mic className="h-4 w-4" />,
 };
 
 const colorMap: Record<StepType, { bg: string; border: string; icon: string }> = {
@@ -51,6 +55,10 @@ const colorMap: Record<StepType, { bg: string; border: string; icon: string }> =
   http: { bg: "bg-sky-500/10", border: "border-sky-500", icon: "text-sky-500" },
   code: { bg: "bg-lime-500/10", border: "border-lime-500", icon: "text-lime-500" },
   loop: { bg: "bg-fuchsia-500/10", border: "border-fuchsia-500", icon: "text-fuchsia-500" },
+  embedding: { bg: "bg-teal-500/10", border: "border-teal-500", icon: "text-teal-500" },
+  classifier: { bg: "bg-pink-500/10", border: "border-pink-500", icon: "text-pink-500" },
+  "image-gen": { bg: "bg-purple-500/10", border: "border-purple-500", icon: "text-purple-500" },
+  audio: { bg: "bg-yellow-500/10", border: "border-yellow-500", icon: "text-yellow-500" },
 };
 
 function getSubtitle(data: StepData): string {
