@@ -5,7 +5,8 @@
 
 /**
  * Workflow graph state management — single source of truth for the canvas.
- * Adapted from thutasann/workflow-builder WorkflowContext (MIT).
+ * Undo/redo uses snapshot-based history with a freeze guard (inspired by n8n's command pattern).
+ * Auto-save debounced at 2s after last mutation.
  */
 
 import {
@@ -45,12 +46,10 @@ interface WorkflowContextType {
   stepSelector: StepSelectorState;
   isDirty: boolean;
 
-  // React Flow handlers
   onNodesChange: OnNodesChange;
   onEdgesChange: OnEdgesChange;
   onConnect: (connection: Connection) => void;
 
-  // Graph mutations
   setNodes: React.Dispatch<React.SetStateAction<Node[]>>;
   setEdges: React.Dispatch<React.SetStateAction<Edge[]>>;
   addNode: (node: Node) => void;
@@ -58,17 +57,14 @@ interface WorkflowContextType {
   selectNode: (nodeId: string | null) => void;
   updateNodeData: (nodeId: string, data: Record<string, unknown>) => void;
 
-  // Serialization
   getNodesAndEdges: () => { nodes: Node[]; edges: Edge[] };
   markClean: () => void;
 
-  // Undo / redo
   undo: () => void;
   redo: () => void;
   canUndo: boolean;
   canRedo: boolean;
 
-  // Step selector
   openStepSelector: (
     parentStepId: string,
     position: { x: number; y: number },
@@ -84,6 +80,12 @@ export function useWorkflow() {
   if (!ctx) throw new Error("useWorkflow must be used within WorkflowProvider");
   return ctx;
 }
+
+// ── Snapshot-based history with freeze guard ─────────
+
+type Snapshot = { nodes: Node[]; edges: Edge[] };
+
+const MAX_HISTORY = 50;
 
 // ── Provider ─────────────────────────────────────────
 
@@ -108,90 +110,98 @@ export function WorkflowProvider({
     parentStepId: null,
   });
 
-  // Ref-based getter to avoid stale closures in save callbacks
+  // Ref-based getters to avoid stale closures
   const nodesRef = useRef(nodes);
   const edgesRef = useRef(edges);
   useEffect(() => { nodesRef.current = nodes; }, [nodes]);
   useEffect(() => { edgesRef.current = edges; }, [edges]);
 
-  // ── Undo / Redo history ────────────────────────────
-  type Snapshot = { nodes: Node[]; edges: Edge[] };
-  const historyRef = useRef<Snapshot[]>([{ nodes: initialNodes, edges: initialEdges }]);
-  const historyIndexRef = useRef(0);
-  const isUndoingRef = useRef(false);
+  // ── History ────────────────────────────────────────
+  const undoStack = useRef<Snapshot[]>([]);
+  const redoStack = useRef<Snapshot[]>([]);
+  const frozenRef = useRef(false); // true during undo/redo to block history pushes
   const [canUndo, setCanUndo] = useState(false);
   const [canRedo, setCanRedo] = useState(false);
 
-  const pushHistory = useCallback(() => {
-    if (isUndoingRef.current) return;
-    const snap: Snapshot = { nodes: nodesRef.current, edges: edgesRef.current };
-    const hist = historyRef.current;
-    // Trim forward history on new action
-    historyRef.current = hist.slice(0, historyIndexRef.current + 1);
-    historyRef.current.push(snap);
-    if (historyRef.current.length > 50) historyRef.current.shift();
-    historyIndexRef.current = historyRef.current.length - 1;
-    setCanUndo(historyIndexRef.current > 0);
+  /** Save current state to undo stack before a mutation. */
+  const saveSnapshot = useCallback(() => {
+    if (frozenRef.current) return;
+    undoStack.current.push({
+      nodes: structuredClone(nodesRef.current),
+      edges: structuredClone(edgesRef.current),
+    });
+    if (undoStack.current.length > MAX_HISTORY) undoStack.current.shift();
+    // New action invalidates redo
+    redoStack.current = [];
+    setCanUndo(true);
     setCanRedo(false);
   }, []);
 
-  const undo = useCallback(() => {
-    if (historyIndexRef.current <= 0) return;
-    isUndoingRef.current = true;
-    historyIndexRef.current--;
-    const snap = historyRef.current[historyIndexRef.current];
+  const applySnapshot = useCallback((snap: Snapshot) => {
+    frozenRef.current = true;
     setNodes(snap.nodes);
     setEdges(snap.edges);
-    setCanUndo(historyIndexRef.current > 0);
-    setCanRedo(historyIndexRef.current < historyRef.current.length - 1);
-    setIsDirty(true);
-    // Keep the flag true for 2 frames to block change handlers from pushing history
-    requestAnimationFrame(() => requestAnimationFrame(() => { isUndoingRef.current = false; }));
+    // Unfreeze after React commits the update
+    setTimeout(() => { frozenRef.current = false; }, 50);
   }, [setNodes, setEdges]);
+
+  const undo = useCallback(() => {
+    if (undoStack.current.length === 0) return;
+    const snap = undoStack.current.pop()!;
+    // Push current state to redo
+    redoStack.current.push({
+      nodes: structuredClone(nodesRef.current),
+      edges: structuredClone(edgesRef.current),
+    });
+    applySnapshot(snap);
+    setCanUndo(undoStack.current.length > 0);
+    setCanRedo(true);
+    setIsDirty(true);
+  }, [applySnapshot]);
 
   const redo = useCallback(() => {
-    if (historyIndexRef.current >= historyRef.current.length - 1) return;
-    isUndoingRef.current = true;
-    historyIndexRef.current++;
-    const snap = historyRef.current[historyIndexRef.current];
-    setNodes(snap.nodes);
-    setEdges(snap.edges);
-    setCanUndo(historyIndexRef.current > 0);
-    setCanRedo(historyIndexRef.current < historyRef.current.length - 1);
+    if (redoStack.current.length === 0) return;
+    const snap = redoStack.current.pop()!;
+    // Push current state to undo
+    undoStack.current.push({
+      nodes: structuredClone(nodesRef.current),
+      edges: structuredClone(edgesRef.current),
+    });
+    applySnapshot(snap);
+    setCanUndo(true);
+    setCanRedo(redoStack.current.length > 0);
     setIsDirty(true);
-    requestAnimationFrame(() => requestAnimationFrame(() => { isUndoingRef.current = false; }));
-  }, [setNodes, setEdges]);
+  }, [applySnapshot]);
 
-  // Track dirty state on any mutation
+  // ── Wrapped change handlers ────────────────────────
+
   const wrappedOnNodesChange: OnNodesChange = useCallback(
     (changes) => {
+      // Save snapshot before meaningful changes
+      const meaningful = changes.some((c) => c.type === "add" || c.type === "remove" || c.type === "replace");
+      if (meaningful) saveSnapshot();
       onNodesChange(changes);
       setIsDirty(true);
-      // Only push history for meaningful changes (add/remove/replace), not position drag
-      const meaningful = changes.some((c) => c.type === "add" || c.type === "remove" || c.type === "replace");
-      if (meaningful) pushHistory();
     },
-    [onNodesChange, pushHistory],
+    [onNodesChange, saveSnapshot],
   );
 
   const wrappedOnEdgesChange: OnEdgesChange = useCallback(
     (changes) => {
+      const meaningful = changes.some((c) => c.type === "add" || c.type === "remove" || c.type === "replace");
+      if (meaningful) saveSnapshot();
       onEdgesChange(changes);
       setIsDirty(true);
-      const meaningful = changes.some((c) => c.type === "add" || c.type === "remove" || c.type === "replace");
-      if (meaningful) pushHistory();
     },
-    [onEdgesChange, pushHistory],
+    [onEdgesChange, saveSnapshot],
   );
 
   const onConnect = useCallback(
     (connection: Connection) => {
-      // Remove any AddButton node that was the previous target of the source
-      // (e.g. Start→AddButton chain becomes Start→NewNode)
+      saveSnapshot();
       setNodes((nds) => {
         const addButtonIds = new Set<string>();
         setEdges((eds) => {
-          // Find AddButton nodes connected as target of the same source
           for (const e of eds) {
             if (e.source === connection.source) {
               const targetNode = nds.find((n) => n.id === e.target);
@@ -200,7 +210,6 @@ export function WorkflowProvider({
               }
             }
           }
-          // Remove edges involving those AddButton nodes
           const cleaned = eds.filter(
             (e) => !addButtonIds.has(e.source) && !addButtonIds.has(e.target),
           );
@@ -209,28 +218,26 @@ export function WorkflowProvider({
             cleaned,
           );
         });
-        // Remove AddButton nodes themselves
         return addButtonIds.size > 0 ? nds.filter((n) => !addButtonIds.has(n.id)) : nds;
       });
       setIsDirty(true);
-      pushHistory();
     },
-    [setNodes, setEdges, pushHistory],
+    [setNodes, setEdges, saveSnapshot],
   );
 
   const addNode = useCallback(
     (node: Node) => {
+      saveSnapshot();
       setNodes((nds) => [...nds, node]);
       setIsDirty(true);
-      pushHistory();
     },
-    [setNodes, pushHistory],
+    [setNodes, saveSnapshot],
   );
 
   const deleteNode = useCallback(
     (nodeId: string) => {
+      saveSnapshot();
       setNodes((nds) => {
-        // Find edges connected to this node to clean up orphaned add-buttons
         const connectedAddButtons = new Set<string>();
         const currentEdges = edgesRef.current;
         for (const e of currentEdges) {
@@ -247,9 +254,8 @@ export function WorkflowProvider({
       setEdges((eds) => eds.filter((e) => e.source !== nodeId && e.target !== nodeId));
       setSelectedNodeId((curr) => (curr === nodeId ? null : curr));
       setIsDirty(true);
-      pushHistory();
     },
-    [setNodes, setEdges, pushHistory],
+    [setNodes, setEdges, saveSnapshot],
   );
 
   const selectNode = useCallback((nodeId: string | null) => {
@@ -258,15 +264,15 @@ export function WorkflowProvider({
 
   const updateNodeData = useCallback(
     (nodeId: string, data: Record<string, unknown>) => {
+      saveSnapshot();
       setNodes((nds) =>
         nds.map((n) =>
           n.id === nodeId ? { ...n, data: { ...n.data, ...data } } : n,
         ),
       );
       setIsDirty(true);
-      pushHistory();
     },
-    [setNodes, pushHistory],
+    [setNodes, saveSnapshot],
   );
 
   const getNodesAndEdges = useCallback(() => ({

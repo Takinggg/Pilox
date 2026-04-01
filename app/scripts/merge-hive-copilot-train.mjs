@@ -45,7 +45,14 @@ function main() {
     ? fs.readFileSync(nodeDeepPath, "utf8").trim().split("\n").filter(Boolean)
     : [];
 
-  let lines = [...gold, ...enriched, ...nodeDeep, ...syn, ...pub];
+  // Upsample gold/enriched/nodeDeep 20x to prevent synthetic dilution
+  const goldUp = [];
+  const UPSAMPLE = 20;
+  for (let i = 0; i < UPSAMPLE; i++) {
+    goldUp.push(...gold, ...enriched, ...nodeDeep);
+  }
+
+  let lines = [...goldUp, ...syn, ...pub];
   if (shuffleFlag) lines = shuffle(lines);
 
   const out = path.join(DATA, "combined-train.jsonl");
@@ -57,6 +64,8 @@ function main() {
         gold_lines: gold.length,
         enriched_v2_lines: enriched.length,
         node_deep_v2_lines: nodeDeep.length,
+        gold_upsample_factor: UPSAMPLE,
+        gold_upsampled_total: goldUp.length,
         synthetic_lines: syn.length,
         public_lines: pub.length,
         combined_lines: lines.length,

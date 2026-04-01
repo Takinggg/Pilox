@@ -1,17 +1,17 @@
 {
   "summary": {
-    "generated_at": "2026-04-01T00:58:53.942Z",
-    "source_file": "datasets\\hive-copilot-v1\\splits\\golden-eval.jsonl",
+    "generated_at": "2026-04-01T01:12:59.968Z",
+    "source_file": "datasets\\hive-copilot-v1\\reports\\golden-inference-predictions.jsonl",
     "golden_eval_lines": 24,
     "parse_ok": 24,
-    "lines_with_assistant_hive_mention": 23,
-    "lines_all_mentioned_images_canonical": 23,
-    "lines_with_unknown_hive_image": 0,
-    "lines_with_valid_canvas_schema_json_block": 0,
+    "lines_with_assistant_hive_mention": 7,
+    "lines_all_mentioned_images_canonical": 3,
+    "lines_with_unknown_hive_image": 4,
+    "lines_with_valid_canvas_schema_json_block": 1,
     "rates": {
-      "hive_mention": 0.9583333333333334,
-      "all_canonical_when_mentioned": 1,
-      "schema_json_block": 0
+      "hive_mention": 0.2916666666666667,
+      "all_canonical_when_mentioned": 0.42857142857142855,
+      "schema_json_block": 0.041666666666666664
     },
     "note": "Reference labels (gold): high scores = dataset consistent with canonical + schema. For model runs, compare same metrics on model outputs."
   },
@@ -20,36 +20,30 @@
     {
       "eval_id": "eval-001",
       "hive_images_in_assistant": [
-        "hive/http-input:latest",
-        "hive/llm-agent:latest",
-        "hive/router-agent:latest",
-        "hive/api-caller:latest",
-        "hive/http-output:latest"
+        "hive/ingress:latest",
+        "hive/processing:latest",
+        "hive/egress:latest"
       ],
-      "unknown_hive_images": [],
-      "json_blocks_parsed": 0,
-      "json_blocks_total": 0,
-      "canvas_schema_valid_any": false
+      "unknown_hive_images": [
+        "hive/ingress:latest",
+        "hive/processing:latest",
+        "hive/egress:latest"
+      ],
+      "json_blocks_parsed": 1,
+      "json_blocks_total": 1,
+      "canvas_schema_valid_any": true
     },
     {
       "eval_id": "eval-002",
-      "hive_images_in_assistant": [
-        "hive/doc-loader:latest",
-        "hive/text-processor:latest",
-        "hive/llm-agent:latest",
-        "hive/api-caller:latest",
-        "hive/http-output:latest"
-      ],
+      "hive_images_in_assistant": [],
       "unknown_hive_images": [],
       "json_blocks_parsed": 0,
-      "json_blocks_total": 0,
+      "json_blocks_total": 1,
       "canvas_schema_valid_any": false
     },
     {
       "eval_id": "eval-003",
-      "hive_images_in_assistant": [
-        "hive/llm-agent:latest"
-      ],
+      "hive_images_in_assistant": [],
       "unknown_hive_images": [],
       "json_blocks_parsed": 0,
       "json_blocks_total": 0,
@@ -58,8 +52,7 @@
     {
       "eval_id": "eval-004",
       "hive_images_in_assistant": [
-        "hive/rag-agent:latest",
-        "hive/embedding-agent:latest"
+        "hive/rag-agent:latest"
       ],
       "unknown_hive_images": [],
       "json_blocks_parsed": 0,
@@ -68,24 +61,15 @@
     },
     {
       "eval_id": "eval-005",
-      "hive_images_in_assistant": [
-        "hive/iterator-agent:latest",
-        "hive/api-caller:latest",
-        "hive/code-runner:latest"
-      ],
+      "hive_images_in_assistant": [],
       "unknown_hive_images": [],
       "json_blocks_parsed": 0,
-      "json_blocks_total": 0,
+      "json_blocks_total": 1,
       "canvas_schema_valid_any": false
     },
     {
       "eval_id": "eval-006",
-      "hive_images_in_assistant": [
-        "hive/http-input:latest",
-        "hive/llm-agent:latest",
-        "hive/output-parser:latest",
-        "hive/http-output:latest"
-      ],
+      "hive_images_in_assistant": [],
       "unknown_hive_images": [],
       "json_blocks_parsed": 0,
       "json_blocks_total": 0,
@@ -94,7 +78,6 @@
     {
       "eval_id": "eval-007",
       "hive_images_in_assistant": [
-        "hive/tool-agent:latest",
         "hive/llm-agent:latest"
       ],
       "unknown_hive_images": [],
@@ -105,30 +88,26 @@
     {
       "eval_id": "eval-008",
       "hive_images_in_assistant": [
-        "hive/memory-agent:latest",
-        "hive/rag-agent:latest"
+        "hive/llm:latest"
       ],
-      "unknown_hive_images": [],
+      "unknown_hive_images": [
+        "hive/llm:latest"
+      ],
       "json_blocks_parsed": 0,
-      "json_blocks_total": 0,
+      "json_blocks_total": 2,
       "canvas_schema_valid_any": false
     },
     {
       "eval_id": "eval-009",
-      "hive_images_in_assistant": [
-        "hive/text-processor:latest",
-        "hive/api-caller:latest",
-        "hive/llm-agent:latest"
-      ],
+      "hive_images_in_assistant": [],
       "unknown_hive_images": [],
       "json_blocks_parsed": 0,
-      "json_blocks_total": 0,
+      "json_blocks_total": 3,
       "canvas_schema_valid_any": false
     },
     {
       "eval_id": "eval-010",
       "hive_images_in_assistant": [
-        "hive/tool-agent:latest",
         "hive/generic-agent:latest"
       ],
       "unknown_hive_images": [],
@@ -138,34 +117,32 @@
     },
     {
       "eval_id": "eval-011",
-      "hive_images_in_assistant": [
-        "hive/iterator-agent:latest",
-        "hive/code-runner:latest"
-      ],
+      "hive_images_in_assistant": [],
       "unknown_hive_images": [],
       "json_blocks_parsed": 0,
-      "json_blocks_total": 0,
+      "json_blocks_total": 1,
       "canvas_schema_valid_any": false
     },
     {
       "eval_id": "eval-012",
-      "hive_images_in_assistant": [
-        "hive/llm-agent:latest"
-      ],
+      "hive_images_in_assistant": [],
       "unknown_hive_images": [],
       "json_blocks_parsed": 0,
-      "json_blocks_total": 0,
+      "json_blocks_total": 1,
       "canvas_schema_valid_any": false
     },
     {
       "eval_id": "eval-013",
       "hive_images_in_assistant": [
-        "hive/api-caller:latest",
-        "hive/db-connector:latest",
-        "hive/llm-agent:latest",
-        "hive/http-input:latest"
+        "hive/ingress:latest",
+        "hive/processing:latest",
+        "hive/egress:latest"
       ],
-      "unknown_hive_images": [],
+      "unknown_hive_images": [
+        "hive/ingress:latest",
+        "hive/processing:latest",
+        "hive/egress:latest"
+      ],
       "json_blocks_parsed": 0,
       "json_blocks_total": 0,
       "canvas_schema_valid_any": false
@@ -173,20 +150,22 @@
     {
       "eval_id": "eval-014",
       "hive_images_in_assistant": [
-        "hive/redis-connector:latest",
-        "hive/code-runner:latest"
+        "hive/ingestor:latest",
+        "hive/processor:latest",
+        "hive/egress:latest"
       ],
-      "unknown_hive_images": [],
+      "unknown_hive_images": [
+        "hive/ingestor:latest",
+        "hive/processor:latest",
+        "hive/egress:latest"
+      ],
       "json_blocks_parsed": 0,
-      "json_blocks_total": 0,
+      "json_blocks_total": 3,
       "canvas_schema_valid_any": false
     },
     {
       "eval_id": "eval-015",
-      "hive_images_in_assistant": [
-        "hive/embedding-agent:latest",
-        "hive/rag-agent:latest"
-      ],
+      "hive_images_in_assistant": [],
       "unknown_hive_images": [],
       "json_blocks_parsed": 0,
       "json_blocks_total": 0,
@@ -194,10 +173,7 @@
     },
     {
       "eval_id": "eval-016",
-      "hive_images_in_assistant": [
-        "hive/router-agent:latest",
-        "hive/code-runner:latest"
-      ],
+      "hive_images_in_assistant": [],
       "unknown_hive_images": [],
       "json_blocks_parsed": 0,
       "json_blocks_total": 0,
@@ -205,9 +181,7 @@
     },
     {
       "eval_id": "eval-017",
-      "hive_images_in_assistant": [
-        "hive/rag-agent:latest"
-      ],
+      "hive_images_in_assistant": [],
       "unknown_hive_images": [],
       "json_blocks_parsed": 0,
       "json_blocks_total": 0,
@@ -215,12 +189,7 @@
     },
     {
       "eval_id": "eval-018",
-      "hive_images_in_assistant": [
-        "hive/doc-loader:latest",
-        "hive/text-processor:latest",
-        "hive/embedding-agent:latest",
-        "hive/rag-agent:latest"
-      ],
+      "hive_images_in_assistant": [],
       "unknown_hive_images": [],
       "json_blocks_parsed": 0,
       "json_blocks_total": 0,
@@ -236,10 +205,7 @@
     },
     {
       "eval_id": "eval-020",
-      "hive_images_in_assistant": [
-        "hive/api-caller:latest",
-        "hive/output-parser:latest"
-      ],
+      "hive_images_in_assistant": [],
       "unknown_hive_images": [],
       "json_blocks_parsed": 0,
       "json_blocks_total": 0,
@@ -247,10 +213,7 @@
     },
     {
       "eval_id": "eval-021",
-      "hive_images_in_assistant": [
-        "hive/llm-agent:latest",
-        "hive/output-parser:latest"
-      ],
+      "hive_images_in_assistant": [],
       "unknown_hive_images": [],
       "json_blocks_parsed": 0,
       "json_blocks_total": 0,
@@ -258,11 +221,7 @@
     },
     {
       "eval_id": "eval-022",
-      "hive_images_in_assistant": [
-        "hive/text-processor:latest",
-        "hive/api-caller:latest",
-        "hive/llm-agent:latest"
-      ],
+      "hive_images_in_assistant": [],
       "unknown_hive_images": [],
       "json_blocks_parsed": 0,
       "json_blocks_total": 0,
@@ -270,11 +229,7 @@
     },
     {
       "eval_id": "eval-023",
-      "hive_images_in_assistant": [
-        "hive/code-runner:latest",
-        "hive/redis-connector:latest",
-        "hive/http-output:latest"
-      ],
+      "hive_images_in_assistant": [],
       "unknown_hive_images": [],
       "json_blocks_parsed": 0,
       "json_blocks_total": 0,
@@ -282,10 +237,7 @@
     },
     {
       "eval_id": "eval-024",
-      "hive_images_in_assistant": [
-        "hive/tool-agent:latest",
-        "hive/llm-agent:latest"
-      ],
+      "hive_images_in_assistant": [],
       "unknown_hive_images": [],
       "json_blocks_parsed": 0,
       "json_blocks_total": 0,
