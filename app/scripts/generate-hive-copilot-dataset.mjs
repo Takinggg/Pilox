@@ -218,21 +218,39 @@ function pickFlowiseUser(node, label, desc, cat, variant) {
   return T[variant % T.length]();
 }
 
+function describeInputs(inputs) {
+  if (!inputs || !Array.isArray(inputs) || inputs.length === 0) return "";
+  const configInputs = inputs.filter(
+    (i) => !["BaseLanguageModel", "BaseChatModel", "BaseCache", "BaseRetriever", "VectorStore", "BaseEmbedding", "Document"].includes(i.type)
+  );
+  if (configInputs.length === 0) return "";
+  const top = configInputs.slice(0, 6);
+  const lines = top.map((i) => {
+    const def = i.default ? ` (default: ${typeof i.default === "string" ? i.default : JSON.stringify(i.default)})` : "";
+    return `- \`${i.name}\`: ${i.type}${def}`;
+  });
+  return "\n\nKey parameters:\n" + lines.join("\n");
+}
+
 function flowiseAssistant(node, image, cat, variant) {
   const base = `Use \`${image}\` for Flowise node \`${node.name}\` (category: ${cat}).`;
-  const tail =
-    image === "hive/generic-agent:latest"
-      ? [
-          "No dedicated Hive mapping — review and assign manually.",
-          "Treat as generic in the importer; confirm against your Flowise export.",
-          "Fallback container; verify inputs before production.",
-        ]
-      : [
-          "Matches the Hive Flowise import mapping.",
-          "This is the expected runtime for that Flowise category.",
-          "Aligns with CATEGORY_MAP / slug mapping used on import.",
-        ];
-  return `${base} ${tail[variant % tail.length]}`;
+  const desc = node.description ? ` ${truncate(node.description, 150)}` : "";
+  const inputsDesc = describeInputs(node.inputs);
+
+  if (image === "hive/generic-agent:latest") {
+    const tails = [
+      "No dedicated Hive mapping — review the node's function and reassign to the closest hive/* image (llm-agent, tool-agent, rag-agent, etc.).",
+      "Treat as generic in the importer; inspect inputs/outputs to determine the correct Hive runtime.",
+      "Fallback container; check if this is LLM (llm-agent), retrieval (rag-agent), or tool (tool-agent) and reassign.",
+    ];
+    return `${base}${desc} ${tails[variant % tails.length]}${inputsDesc}`;
+  }
+  const tails = [
+    `This node handles: ${desc || cat}.`,
+    `Maps to ${image} based on its ${cat} role.`,
+    `Standard import mapping.${desc}`,
+  ];
+  return `${base} ${tails[variant % tails.length]}${inputsDesc}`;
 }
 
 function buildFlowiseExample(node, variant) {
@@ -290,21 +308,23 @@ function pickLangflowUser(c, label, desc, variant) {
 
 function langflowAssistant(c, image, variant) {
   const base = `Use \`${image}\` for Langflow component "${c.name}" (category: ${c.category}).`;
+  const desc = c.description ? ` ${truncate(c.description, 150)}` : "";
+  const inputsDesc = describeInputs(c.inputs);
+
   if (image === "hive/generic-agent:latest") {
     const tails = [
-      "Category is not in the default Langflow→Hive map — use generic or extend mapping.",
-      "No default mapping; keep as hive/generic-agent:latest until you classify it.",
-      "Fallback: confirm component role (LLM vs RAG vs tool) then reassign.",
+      "Category is not in the default Langflow→Hive map — inspect its role (LLM, tool, retrieval) and reassign.",
+      "No default mapping; check if it's an LLM wrapper (llm-agent), tool (tool-agent), or data processor (text-processor).",
+      "Fallback: confirm component role then reassign to the closest hive/* image.",
     ];
-    return `${base} ${tails[variant % tails.length]}`;
+    return `${base}${desc} ${tails[variant % tails.length]}${inputsDesc}`;
   }
   const tails = [
-    "Standard Langflow→Hive mapping applies.",
-    "This category maps cleanly to that Hive runtime.",
-    "",
+    `This component handles: ${desc || c.category}.`,
+    `Maps to ${image} based on its ${c.category} role.`,
+    `Standard mapping.${desc}`,
   ];
-  const t = tails[variant % tails.length];
-  return t ? `${base} ${t}` : base;
+  return `${base} ${tails[variant % tails.length]}${inputsDesc}`;
 }
 
 function buildLangflowExample(c, variant) {
@@ -361,12 +381,15 @@ function pickMastraUser(node, label, desc, cat, variant) {
 
 function mastraAssistant(node, image, cat, variant) {
   const base = `Use \`${image}\` for Mastra node \`${node.name}\` (category: ${cat}).`;
+  const desc = node.description ? ` ${truncate(node.description, 150)}` : "";
+  const inputsDesc = describeInputs(node.inputs);
+
   const tails = [
-    "Mastra primitives map to Hive chains, LLM agents, tools, or RAG by category.",
-    "Category drives the Hive runtime (workflow→chain, agent→llm, tool→tool, …).",
-    "Same mapping rule as MASTRA_CATEGORY_MAP in Hive.",
+    `This node handles: ${desc || cat}. Mastra ${cat} primitives map to ${image}.`,
+    `Maps to ${image} (${cat}→${image.replace("hive/","").replace(":latest","")}).${desc}`,
+    `Standard Mastra mapping.${desc}`,
   ];
-  return `${base} ${tails[variant % tails.length]}`;
+  return `${base} ${tails[variant % tails.length]}${inputsDesc}`;
 }
 
 function buildMastraExample(node, variant) {

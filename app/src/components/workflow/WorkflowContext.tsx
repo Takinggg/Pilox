@@ -143,9 +143,10 @@ export function WorkflowProvider({
     setNodes(snap.nodes);
     setEdges(snap.edges);
     setCanUndo(historyIndexRef.current > 0);
-    setCanRedo(true);
+    setCanRedo(historyIndexRef.current < historyRef.current.length - 1);
     setIsDirty(true);
-    requestAnimationFrame(() => { isUndoingRef.current = false; });
+    // Keep the flag true for 2 frames to block change handlers from pushing history
+    requestAnimationFrame(() => requestAnimationFrame(() => { isUndoingRef.current = false; }));
   }, [setNodes, setEdges]);
 
   const redo = useCallback(() => {
@@ -155,10 +156,10 @@ export function WorkflowProvider({
     const snap = historyRef.current[historyIndexRef.current];
     setNodes(snap.nodes);
     setEdges(snap.edges);
-    setCanUndo(true);
+    setCanUndo(historyIndexRef.current > 0);
     setCanRedo(historyIndexRef.current < historyRef.current.length - 1);
     setIsDirty(true);
-    requestAnimationFrame(() => { isUndoingRef.current = false; });
+    requestAnimationFrame(() => requestAnimationFrame(() => { isUndoingRef.current = false; }));
   }, [setNodes, setEdges]);
 
   // Track dirty state on any mutation

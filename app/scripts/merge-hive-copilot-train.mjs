@@ -40,7 +40,12 @@ function main() {
     ? fs.readFileSync(enrichedPath, "utf8").trim().split("\n").filter(Boolean)
     : [];
 
-  let lines = [...gold, ...enriched, ...syn, ...pub];
+  const nodeDeepPath = path.join(DATA, "gold-node-deep-v2.jsonl");
+  const nodeDeep = fs.existsSync(nodeDeepPath)
+    ? fs.readFileSync(nodeDeepPath, "utf8").trim().split("\n").filter(Boolean)
+    : [];
+
+  let lines = [...gold, ...enriched, ...nodeDeep, ...syn, ...pub];
   if (shuffleFlag) lines = shuffle(lines);
 
   const out = path.join(DATA, "combined-train.jsonl");
@@ -51,6 +56,7 @@ function main() {
       {
         gold_lines: gold.length,
         enriched_v2_lines: enriched.length,
+        node_deep_v2_lines: nodeDeep.length,
         synthetic_lines: syn.length,
         public_lines: pub.length,
         combined_lines: lines.length,
