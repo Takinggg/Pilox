@@ -65,7 +65,7 @@ export async function POST(req: Request) {
         return NextResponse.json({ success: true, status: "ready", model: COPILOT_MODEL });
       } catch (err) {
         log.error("copilot_enable_failed", { error: String(err) });
-        return errorResponse(ErrorCode.INTERNAL, `Failed to pull model: ${err}`, 502);
+        return errorResponse(ErrorCode.INTERNAL_ERROR, `Failed to pull model: ${err}`, 502);
       }
     }
 
@@ -82,7 +82,7 @@ export async function POST(req: Request) {
         return NextResponse.json({ success: true, status: "disabled", model: COPILOT_MODEL });
       } catch (err) {
         log.error("copilot_disable_failed", { error: String(err) });
-        return errorResponse(ErrorCode.INTERNAL, `Failed to remove model: ${err}`, 502);
+        return errorResponse(ErrorCode.INTERNAL_ERROR, `Failed to remove model: ${err}`, 502);
       }
     }
 

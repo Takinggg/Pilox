@@ -87,7 +87,7 @@ export async function POST(
 
       if (!res.ok) {
         log.error("copilot_inference_failed", { status: res.status });
-        return errorResponse(ErrorCode.INTERNAL, "Copilot inference failed", 502);
+        return errorResponse(ErrorCode.INTERNAL_ERROR, "Copilot inference failed", 502);
       }
 
       const json = await res.json();
@@ -97,7 +97,7 @@ export async function POST(
       return NextResponse.json({ suggestions, raw: content });
     } catch (err) {
       log.error("copilot_error", { error: String(err) });
-      return errorResponse(ErrorCode.INTERNAL, "Copilot unavailable", 503);
+      return errorResponse(ErrorCode.INTERNAL_ERROR, "Copilot unavailable", 503);
     }
   });
 }
