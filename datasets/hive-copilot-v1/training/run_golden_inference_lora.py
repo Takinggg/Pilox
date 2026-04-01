@@ -67,6 +67,7 @@ def main() -> int:
     ap.add_argument("--base-only", action="store_true", help="Do not load LoRA adapter")
     ap.add_argument("--max-samples", type=int, default=None)
     ap.add_argument("--max-new-tokens", type=int, default=1024)
+    ap.add_argument("--qlora", action="store_true", help="Load base model in 4-bit (for GPUs with <16GB VRAM)")
     args = ap.parse_args()
 
     try:
@@ -89,12 +90,24 @@ def main() -> int:
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
 
-    model = AutoModelForCausalLM.from_pretrained(
-        args.base_model,
-        trust_remote_code=True,
-        dtype=dtype,
-        device_map="auto" if torch.cuda.is_available() else None,
-    )
+    load_kwargs = {
+        "trust_remote_code": True,
+        "device_map": "auto" if torch.cuda.is_available() else None,
+    }
+
+    if args.qlora and torch.cuda.is_available():
+        from transformers import BitsAndBytesConfig
+        load_kwargs["quantization_config"] = BitsAndBytesConfig(
+            load_in_4bit=True,
+            bnb_4bit_quant_type="nf4",
+            bnb_4bit_compute_dtype=dtype,
+            bnb_4bit_use_double_quant=True,
+        )
+        print("QLoRA 4-bit inference enabled", flush=True)
+    else:
+        load_kwargs["dtype"] = dtype
+
+    model = AutoModelForCausalLM.from_pretrained(args.base_model, **load_kwargs)
     if not torch.cuda.is_available():
         model = model.to("cpu")
 
