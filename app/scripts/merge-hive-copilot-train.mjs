@@ -35,7 +35,12 @@ function main() {
     ? fs.readFileSync(pubPath, "utf8").trim().split("\n").filter(Boolean)
     : [];
 
-  let lines = [...gold, ...syn, ...pub];
+  const enrichedPath = path.join(DATA, "gold-enriched-v2.jsonl");
+  const enriched = fs.existsSync(enrichedPath)
+    ? fs.readFileSync(enrichedPath, "utf8").trim().split("\n").filter(Boolean)
+    : [];
+
+  let lines = [...gold, ...enriched, ...syn, ...pub];
   if (shuffleFlag) lines = shuffle(lines);
 
   const out = path.join(DATA, "combined-train.jsonl");
@@ -45,6 +50,7 @@ function main() {
     JSON.stringify(
       {
         gold_lines: gold.length,
+        enriched_v2_lines: enriched.length,
         synthetic_lines: syn.length,
         public_lines: pub.length,
         combined_lines: lines.length,

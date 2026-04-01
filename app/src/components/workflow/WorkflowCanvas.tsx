@@ -26,7 +26,7 @@ import {
 import {
   Undo2, Redo2, Bot, Sparkles, GitBranch, CircleStop, GripVertical,
   Brain, FileText, Search, Wrench, Database, Globe, Code2, Repeat,
-  BookOpen, LayoutTemplate, ChevronDown, Hexagon,
+  BookOpen, LayoutTemplate, ChevronDown, Hexagon, LayoutGrid, Maximize2,
 } from "lucide-react";
 import "@xyflow/react/dist/style.css";
 
@@ -180,7 +180,7 @@ function NodePalette({
   };
 
   return (
-    <div className="absolute left-3 top-3 bottom-3 z-10 flex flex-col w-[220px] rounded-xl border border-border bg-background/95 backdrop-blur-md shadow-2xl">
+    <div className="absolute left-3 top-3 bottom-3 z-10 flex flex-col w-[180px] rounded-xl border border-border bg-background/95 backdrop-blur-md shadow-2xl overflow-hidden">
       {/* Header */}
       <div className="px-3 pt-3 pb-2">
         <div className="flex items-center gap-2 mb-2.5">
@@ -306,7 +306,74 @@ function WorkflowCanvasInner() {
   } = useWorkflow();
 
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
-  const { screenToFlowPosition, getViewport } = useReactFlow();
+  const { screenToFlowPosition, getViewport, fitView, setNodes: rfSetNodes } = useReactFlow();
+
+  // Auto-fitView when canvas mounts or becomes visible
+  useEffect(() => {
+    const timer = setTimeout(() => fitView({ padding: 0.2, duration: 300 }), 100);
+    return () => clearTimeout(timer);
+  }, [fitView]);
+
+  // Tidy layout: arrange nodes in a vertical tree
+  const tidyLayout = useCallback(() => {
+    const stepNodes = nodes.filter((n) => n.type !== WfNodeType.ADD_BUTTON);
+    if (stepNodes.length === 0) return;
+
+    // Build adjacency from edges
+    const childMap = new Map<string, string[]>();
+    const hasParent = new Set<string>();
+    for (const e of edges) {
+      const children = childMap.get(e.source) ?? [];
+      children.push(e.target);
+      childMap.set(e.source, children);
+      hasParent.add(e.target);
+    }
+
+    // Find roots (no parent)
+    const roots = stepNodes.filter((n) => !hasParent.has(n.id)).map((n) => n.id);
+    if (roots.length === 0) roots.push(stepNodes[0].id);
+
+    // BFS layout
+    const positions = new Map<string, { x: number; y: number }>();
+    const visited = new Set<string>();
+    const queue: Array<{ id: string; depth: number; lane: number }> = roots.map((id, i) => ({ id, depth: 0, lane: i }));
+    const usedLanes = new Map<number, Set<number>>();
+    const W = NODE_SIZE.step.width + 80;
+    const H = NODE_SIZE.step.height + 100;
+
+    while (queue.length > 0) {
+      const { id, depth, lane } = queue.shift()!;
+      if (visited.has(id)) continue;
+      visited.add(id);
+      if (!usedLanes.has(depth)) usedLanes.set(depth, new Set());
+      let finalLane = lane;
+      while (usedLanes.get(depth)!.has(finalLane)) finalLane++;
+      usedLanes.get(depth)!.add(finalLane);
+      positions.set(id, { x: finalLane * W, y: depth * H });
+      const children = childMap.get(id) ?? [];
+      children.forEach((cid, i) => {
+        if (!visited.has(cid)) queue.push({ id: cid, depth: depth + 1, lane: finalLane + i });
+      });
+    }
+
+    // Position unvisited
+    let nextY = (visited.size + 1) * H;
+    for (const n of stepNodes) {
+      if (!positions.has(n.id)) {
+        positions.set(n.id, { x: 0, y: nextY });
+        nextY += H;
+      }
+    }
+
+    rfSetNodes((prev) =>
+      prev.map((n) => {
+        const pos = positions.get(n.id);
+        return pos ? { ...n, position: pos } : n;
+      })
+    );
+
+    setTimeout(() => fitView({ padding: 0.2, duration: 400 }), 50);
+  }, [nodes, edges, rfSetNodes, fitView]);
 
   // Ctrl+Z / Ctrl+Shift+Z keyboard shortcuts
   useEffect(() => {
@@ -469,6 +536,7 @@ function WorkflowCanvasInner() {
         connectionLineType={ConnectionLineType.SmoothStep}
         deleteKeyCode={["Backspace", "Delete"]}
         fitView
+        fitViewOptions={{ padding: 0.3 }}
         snapToGrid
         snapGrid={[16, 16]}
         minZoom={0.25}
@@ -476,7 +544,7 @@ function WorkflowCanvasInner() {
         proOptions={{ hideAttribution: true }}
       >
         <Background variant={BackgroundVariant.Dots} gap={16} size={1} />
-        <Panel position="top-left" className="flex gap-1 !left-[190px]">
+        <Panel position="top-right" className="flex gap-1">
           <button
             onClick={undo}
             disabled={!canUndo}
@@ -492,6 +560,21 @@ function WorkflowCanvasInner() {
             className="flex h-8 w-8 items-center justify-center rounded-md border bg-background text-muted-foreground hover:bg-accent disabled:opacity-30"
           >
             <Redo2 className="h-4 w-4" />
+          </button>
+          <div className="w-px bg-border" />
+          <button
+            onClick={tidyLayout}
+            title="Tidy layout"
+            className="flex h-8 w-8 items-center justify-center rounded-md border bg-background text-muted-foreground hover:bg-accent"
+          >
+            <LayoutGrid className="h-4 w-4" />
+          </button>
+          <button
+            onClick={() => fitView({ padding: 0.2, duration: 300 })}
+            title="Fit to screen"
+            className="flex h-8 w-8 items-center justify-center rounded-md border bg-background text-muted-foreground hover:bg-accent"
+          >
+            <Maximize2 className="h-4 w-4" />
           </button>
         </Panel>
         <Controls />
