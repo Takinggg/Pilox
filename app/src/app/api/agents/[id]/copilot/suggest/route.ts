@@ -90,32 +90,80 @@ export async function POST(
     const userPrompt = buildUserPrompt(nodes, edges, userIntent);
 
     try {
-      const baseUrl = process.env.OLLAMA_URL || `http://127.0.0.1:${process.env.INFERENCE_PORT || "11434"}`;
+      // Try vLLM first (bigger model = better suggestions), fallback to Ollama
+      const vllmUrl = process.env.VLLM_URL || "http://vllm:8000";
+      const ollamaUrl = process.env.OLLAMA_URL || "http://ollama:11434";
+      let content = "";
 
-      const res = await fetch(`${baseUrl}/api/chat`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model: process.env.PILOX_COPILOT_MODEL || "hive-copilot",
-          messages: [
-            { role: "system", content: COPILOT_SYSTEM_PROMPT },
-            { role: "user", content: userPrompt },
-          ],
-          stream: false,
-          options: { temperature: 0.2, num_predict: 512 },
-        }),
-      });
+      // Probe vLLM
+      let useVllm = false;
+      let vllmModel = "";
+      try {
+        const probe = await fetch(`${vllmUrl}/v1/models`, { signal: AbortSignal.timeout(2000) });
+        if (probe.ok) {
+          const models = await probe.json();
+          vllmModel = models.data?.[0]?.id || "";
+          if (vllmModel) useVllm = true;
+        }
+      } catch { /* vLLM not available */ }
 
-      if (!res.ok) {
-        log.error("copilot_inference_failed", { status: res.status });
-        return errorResponse(ErrorCode.INTERNAL_ERROR, "Copilot inference failed", 502);
+      if (useVllm) {
+        // Use vLLM (OpenAI-compatible API) — bigger model, better reasoning
+        log.info("copilot_using_vllm", { model: vllmModel });
+        const res = await fetch(`${vllmUrl}/v1/chat/completions`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            model: vllmModel,
+            messages: [
+              { role: "system", content: COPILOT_SYSTEM_PROMPT },
+              { role: "user", content: userPrompt },
+            ],
+            temperature: 0.2,
+            max_tokens: 1024,
+          }),
+          signal: AbortSignal.timeout(60_000),
+        });
+
+        if (res.ok) {
+          const json = await res.json();
+          content = json.choices?.[0]?.message?.content || "";
+        }
       }
 
-      const json = await res.json();
-      const content = json.message?.content || "";
-      const suggestions = parseSuggestions(content);
+      // Fallback to Ollama if vLLM failed or not available
+      if (!content) {
+        log.info("copilot_using_ollama", { model: process.env.PILOX_COPILOT_MODEL || "hive-copilot" });
+        const res = await fetch(`${ollamaUrl}/api/chat`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            model: process.env.PILOX_COPILOT_MODEL || "hive-copilot",
+            messages: [
+              { role: "system", content: COPILOT_SYSTEM_PROMPT },
+              { role: "user", content: userPrompt },
+            ],
+            stream: false,
+            options: { temperature: 0.2, num_predict: 1024 },
+          }),
+          signal: AbortSignal.timeout(60_000),
+        });
 
-      return NextResponse.json({ suggestions, raw: content });
+        if (!res.ok) {
+          log.error("copilot_inference_failed", { status: res.status });
+          return errorResponse(ErrorCode.INTERNAL_ERROR, "Copilot inference failed", 502);
+        }
+
+        const json = await res.json();
+        content = json.message?.content || "";
+      }
+
+      const suggestions = parseSuggestions(content);
+      return NextResponse.json({
+        suggestions,
+        raw: content,
+        backend: useVllm ? `vllm (${vllmModel})` : "ollama",
+      });
     } catch (err) {
       log.error("copilot_error", { error: String(err) });
       return errorResponse(ErrorCode.INTERNAL_ERROR, "Copilot unavailable", 503);
