@@ -90,10 +90,24 @@ export async function POST(
     const userPrompt = buildUserPrompt(nodes, edges, userIntent);
 
     try {
-      // Try vLLM first (bigger model = better suggestions), fallback to Ollama
       const vllmUrl = process.env.VLLM_URL || "http://vllm:8000";
       const ollamaUrl = process.env.OLLAMA_URL || "http://ollama:11434";
       let content = "";
+
+      // Check if user selected a specific copilot model in runtime config
+      let userCopilotModel = "";
+      let userCopilotProvider = ""; // "ollama" | "vllm" | ""
+      try {
+        const { db: database } = await import("@/db");
+        const { instanceRuntimeConfig } = await import("@/db/schema");
+        const { eq } = await import("drizzle-orm");
+        const [cfg] = await database.select().from(instanceRuntimeConfig).where(eq(instanceRuntimeConfig.key, "COPILOT_MODEL")).limit(1);
+        if (cfg?.value) {
+          const parsed = JSON.parse(cfg.value);
+          userCopilotModel = parsed.model || "";
+          userCopilotProvider = parsed.provider || "";
+        }
+      } catch { /* no config = auto-detect */ }
 
       // Probe vLLM
       let useVllm = false;
@@ -107,9 +121,16 @@ export async function POST(
         }
       } catch { /* vLLM not available */ }
 
+      // User override: force a specific provider + model
+      if (userCopilotProvider === "vllm" && userCopilotModel) {
+        useVllm = true;
+        vllmModel = userCopilotModel;
+      } else if (userCopilotProvider === "ollama" && userCopilotModel) {
+        useVllm = false;
+      }
+
       if (useVllm) {
-        // Use vLLM (OpenAI-compatible API) — bigger model, better reasoning
-        log.info("copilot_using_vllm", { model: vllmModel });
+        log.info("copilot_using_vllm", { model: vllmModel, userOverride: !!userCopilotModel });
         const res = await fetch(`${vllmUrl}/v1/chat/completions`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -133,12 +154,13 @@ export async function POST(
 
       // Fallback to Ollama if vLLM failed or not available
       if (!content) {
-        log.info("copilot_using_ollama", { model: process.env.PILOX_COPILOT_MODEL || "hive-copilot" });
+        const ollamaModel = (userCopilotProvider === "ollama" && userCopilotModel) ? userCopilotModel : (process.env.PILOX_COPILOT_MODEL || "hive-copilot");
+        log.info("copilot_using_ollama", { model: ollamaModel, userOverride: !!userCopilotModel });
         const res = await fetch(`${ollamaUrl}/api/chat`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            model: process.env.PILOX_COPILOT_MODEL || "hive-copilot",
+            model: ollamaModel,
             messages: [
               { role: "system", content: COPILOT_SYSTEM_PROMPT },
               { role: "user", content: userPrompt },
