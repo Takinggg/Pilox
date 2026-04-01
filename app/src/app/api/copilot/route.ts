@@ -58,12 +58,58 @@ export async function POST(req: Request) {
     if (action === "enable") {
       try {
         log.info("copilot_enable_start", { model: COPILOT_MODEL });
-        await pullModel(COPILOT_MODEL);
+
+        // First check if model already exists
+        const models = await listModels();
+        const exists = models.some((m) => m.name === COPILOT_MODEL || m.name.startsWith(COPILOT_MODEL + ":"));
+
+        if (!exists) {
+          // Create copilot from bundled Modelfile (pulls base model + applies system prompt)
+          const { getOllamaBaseUrl } = await import("@/lib/runtime-instance-config");
+          const baseUrl = getOllamaBaseUrl();
+          const fs = await import("node:fs");
+          const path = await import("node:path");
+
+          // Read Modelfile from bundled path or fallback
+          const modelfilePaths = [
+            path.join(process.cwd(), "models/pilox-copilot-lora/Modelfile"),
+            path.join(process.cwd(), "models/hive-copilot-lora/Modelfile"),
+            "/app/models/hive-copilot-lora/Modelfile",
+            "/app/models/pilox-copilot-lora/Modelfile",
+          ];
+          let modelfileContent = "";
+          for (const p of modelfilePaths) {
+            try { modelfileContent = fs.readFileSync(p, "utf-8"); break; } catch { /* try next */ }
+          }
+
+          if (!modelfileContent) {
+            // Fallback: create a basic copilot from qwen2.5 without custom Modelfile
+            modelfileContent = 'FROM qwen2.5:7b\nPARAMETER temperature 0.3\nSYSTEM "You are the Pilox canvas copilot. Suggest workflow nodes when asked."';
+          }
+
+          // Pull base model first
+          const baseModel = modelfileContent.match(/^FROM\s+(.+)$/m)?.[1]?.trim() || "qwen2.5:7b";
+          log.info("copilot_pulling_base", { baseModel });
+          await pullModel(baseModel);
+
+          // Create copilot model
+          log.info("copilot_creating", { model: COPILOT_MODEL });
+          const createRes = await fetch(`${baseUrl}/api/create`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ name: COPILOT_MODEL, modelfile: modelfileContent, stream: false }),
+          });
+          if (!createRes.ok) {
+            const t = await createRes.text().catch(() => "");
+            throw new Error(`Ollama create failed: ${createRes.status} ${t.slice(0, 200)}`);
+          }
+        }
+
         log.info("copilot_enable_done", { model: COPILOT_MODEL });
         return NextResponse.json({ success: true, status: "ready", model: COPILOT_MODEL });
       } catch (err) {
         log.error("copilot_enable_failed", { error: String(err) });
-        return errorResponse(ErrorCode.INTERNAL_ERROR, `Failed to pull model: ${err}`, 502);
+        return errorResponse(ErrorCode.INTERNAL_ERROR, `Failed to enable copilot: ${err}`, 502);
       }
     }
 
