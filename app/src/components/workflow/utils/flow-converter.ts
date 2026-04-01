@@ -96,19 +96,22 @@ export function graphToReactFlow(graph: WorkflowGraph): { nodes: Node[]; edges: 
     loop: WfNodeType.STEP,
   };
 
-  const nodes: Node[] = graph.nodes.map((n) => ({
-    id: n.id,
-    type: nodeTypeMap[n.type] ?? WfNodeType.STEP,
-    position: positions.get(n.id) ?? { x: 0, y: 0 },
-    data: {
-      stepType: n.type,
-      label: n.data.label ?? n.type.charAt(0).toUpperCase() + n.type.slice(1),
-      // Spread all data fields so new node types preserve their config
-      ...n.data,
-    },
-    selectable: n.type !== "end",
-    draggable: true,
-  }));
+  const nodes: Node[] = graph.nodes.map((n) => {
+    // Use saved position if available, otherwise fall back to BFS layout
+    const savedPos = n.data._position as { x: number; y: number } | undefined;
+    return {
+      id: n.id,
+      type: nodeTypeMap[n.type] ?? WfNodeType.STEP,
+      position: savedPos ?? positions.get(n.id) ?? { x: 0, y: 0 },
+      data: {
+        stepType: n.type,
+        label: n.data.label ?? n.type.charAt(0).toUpperCase() + n.type.slice(1),
+        ...n.data,
+      },
+      selectable: n.type !== "end",
+      draggable: true,
+    };
+  });
 
   // Map to React Flow edges
   const edges: Edge[] = graph.edges.map((e) => ({
@@ -146,24 +149,32 @@ export function reactFlowToGraph(
       if (n.type === WfNodeType.ROUTER) nodeType = "router";
 
       // Spread all data fields from React Flow node, stripping stepType (already in type)
+      // Persist position so the canvas restores exactly where the user placed nodes
       const { stepType: _st, ...dataFields } = (n.data ?? {}) as Record<string, unknown>;
       return {
         id: n.id,
         type: nodeType,
-        data: dataFields as WorkflowNode["data"],
+        data: {
+          ...dataFields,
+          _position: n.position,
+        } as WorkflowNode["data"],
       };
     });
 
-  const workflowEdges: WorkflowEdge[] = edges.map((e) => ({
-    id: e.id,
-    source: e.source,
-    target: e.target,
-    sourceHandle: e.sourceHandle ?? undefined,
-    data: {
-      condition: e.data?.condition as string | undefined,
-      variableMap: e.data?.variableMap as Record<string, string> | undefined,
-    },
-  }));
+  // Filter out edges connected to addButton nodes (canvas-only UI elements)
+  const nodeIds = new Set(workflowNodes.map((n) => n.id));
+  const workflowEdges: WorkflowEdge[] = edges
+    .filter((e) => nodeIds.has(e.source) && nodeIds.has(e.target))
+    .map((e) => ({
+      id: e.id,
+      source: e.source,
+      target: e.target,
+      sourceHandle: e.sourceHandle ?? undefined,
+      data: {
+        condition: e.data?.condition as string | undefined,
+        variableMap: e.data?.variableMap as Record<string, string> | undefined,
+      },
+    }));
 
   return { nodes: workflowNodes, edges: workflowEdges };
 }

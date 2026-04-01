@@ -255,7 +255,7 @@ function AgentCanvasTab({ agentId, graph }: { agentId: string; graph: WorkflowGr
   }
 
   return (
-    <WorkflowProvider key={JSON.stringify(g.nodes?.map(n => n.id) ?? [])} initialNodes={initialNodes} initialEdges={initialEdges}>
+    <WorkflowProvider initialNodes={initialNodes} initialEdges={initialEdges}>
       <AgentCanvasTabInner agentId={agentId} />
     </WorkflowProvider>
   );
@@ -1596,8 +1596,11 @@ export default function AgentDetailPage() {
         </div>
       )}
 
-      {tab === "canvas" && isComposed && (
-        <AgentCanvasTab agentId={agent.id} graph={(agent as Record<string, unknown>).graph as WorkflowGraph | null} />
+      {/* Keep canvas mounted (hidden) to preserve state across tab switches */}
+      {isComposed && (
+        <div className={tab === "canvas" ? "" : "hidden"}>
+          <AgentCanvasTab agentId={agent.id} graph={(agent as Record<string, unknown>).graph as WorkflowGraph | null} />
+        </div>
       )}
 
       {tab === "configuration" && (
