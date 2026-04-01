@@ -1367,7 +1367,7 @@ function SettingsPageInner() {
                 type="button"
                 disabled={scheduleSaving || scheduleLoading}
                 onClick={() => void saveBackupSchedule()}
-                className="h-9 w-fit rounded-lg bg-primary px-4 text-[13px] font-medium text-secondary-foreground hover:bg-primary/80 disabled:opacity-50"
+                className="h-9 w-fit rounded-lg bg-primary px-4 text-[13px] font-medium text-primary-foreground hover:bg-primary/80 disabled:opacity-50"
               >
                 {scheduleSaving ? "Saving…" : "Save schedule"}
               </button>
