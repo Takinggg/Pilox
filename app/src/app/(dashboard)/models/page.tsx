@@ -151,6 +151,31 @@ export default function ModelsPage() {
     });
   }
 
+  async function pullLocalAIModel(hfId: string, displayKey: string) {
+    if (downloadStates.has(displayKey)) return;
+    updateDownloadState(displayKey, { progress: 0, status: "Downloading via LocalAI...", error: undefined });
+    try {
+      const res = await fetch("/api/models/pull-localai", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ model: hfId }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) {
+        updateDownloadState(displayKey, { progress: 100, status: "Downloaded! Model loading..." });
+        toast.success(`${displayKey} downloaded — LocalAI is loading it`);
+        setTimeout(() => {
+          setDownloadStates((prev) => { const n = new Map(prev); n.delete(displayKey); return n; });
+          void loadModels();
+        }, 5000);
+      } else {
+        updateDownloadState(displayKey, { error: (data as { error?: string }).error || `Failed (${res.status})` });
+      }
+    } catch (err) {
+      updateDownloadState(displayKey, { error: "Network error" });
+    }
+  }
+
   async function pullModel(ollamaName: string, displayKey?: string) {
     const key = displayKey ?? ollamaName;
     if (downloadStates.has(key)) return; // already pulling
@@ -586,10 +611,14 @@ export default function ModelsPage() {
                             {isDownloading ? "Pulling..." : "Pull (Ollama)"}
                           </button>
                         ) : (model.vllmId || model.huggingFaceId) ? (
-                          <span className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
-                            <Cpu className="h-3 w-3" />
-                            Requires vLLM / GPU
-                          </span>
+                          <button
+                            onClick={() => pullLocalAIModel(model.vllmId || model.huggingFaceId || model.id, model.id)}
+                            disabled={isDownloading}
+                            className="flex h-8 items-center gap-1.5 rounded-lg border border-[var(--pilox-purple)]/30 px-3 text-[11px] text-[var(--pilox-purple)] hover:border-[var(--pilox-purple)] hover:bg-[var(--pilox-purple)]/5 disabled:opacity-40"
+                          >
+                            {isDownloading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Download className="h-3 w-3" />}
+                            {isDownloading ? "Pulling..." : "Pull (Local)"}
+                          </button>
                         ) : (
                           <span className="text-[10px] text-muted-foreground opacity-50">Manual only</span>
                         )}

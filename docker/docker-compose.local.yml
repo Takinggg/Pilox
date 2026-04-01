@@ -67,6 +67,33 @@ services:
     networks:
       - pilox-network
 
+  localai:
+    image: localai/localai:latest-gpu-nvidia-cuda-12
+    restart: on-failure
+    ports:
+      - "8080:8080"
+    volumes:
+      - pilox_localai_data:/build/models
+    environment:
+      THREADS: "4"
+      CONTEXT_SIZE: "4096"
+      GALLERIES: '[{"name":"huggingface", "url": "github:mudler/LocalAI/gallery/huggingface.yaml"}]'
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://127.0.0.1:8080/readyz || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 120s
+    networks:
+      - pilox-network
+
   pilox-app:
     build:
       context: ..
@@ -85,6 +112,7 @@ services:
       DOCKER_HOST: /var/run/docker.sock
       OLLAMA_URL: http://ollama:11434
       VLLM_URL: http://vllm:8000
+      LOCALAI_URL: http://localai:8080
       # PEFT adapter baked into image (npm run dataset:fetch-modal-lora before docker build)
       PILOX_COPILOT_LORA_PATH: /app/models/hive-copilot-lora/lora-hive-copilot
       NODE_ENV: production
@@ -182,6 +210,7 @@ volumes:
   pilox_marketplace_node_state:
   pilox_ollama_data:
   pilox_vllm_data:
+  pilox_localai_data:
 
 networks:
   pilox-network:
