@@ -3,7 +3,7 @@
 import { useCallback, useState, useRef, useEffect } from "react";
 import { useWorkflow } from "./WorkflowContext";
 import { WfNodeType } from "./types";
-import { Bot, Send, Loader2, Plus, X } from "lucide-react";
+import { Bot, Send, Loader2, Plus, X, Settings2 } from "lucide-react";
 
 interface Suggestion {
   nodeType: string;
@@ -33,6 +33,10 @@ export function CopilotPanel({ agentId }: { agentId: string }) {
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<CopilotMessage[]>([]);
   const [copilotReady, setCopilotReady] = useState<boolean | null>(null);
+  const [showModelPicker, setShowModelPicker] = useState(false);
+  const [availableModels, setAvailableModels] = useState<Array<{ name: string; provider: string }>>([]);
+  const [selectedModel, setSelectedModel] = useState<{ model: string; provider: string }>({ model: "", provider: "auto" });
+  const [activeBackend, setActiveBackend] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -41,6 +45,28 @@ export function CopilotPanel({ agentId }: { agentId: string }) {
       .then((data) => setCopilotReady(data.enabled === true))
       .catch(() => setCopilotReady(false));
   }, []);
+
+  // Load available models + current copilot config
+  useEffect(() => {
+    if (!copilotReady) return;
+    // Fetch Ollama models
+    fetch("/api/models?limit=50", { credentials: "include" })
+      .then((r) => r.ok ? r.json() : { data: [] })
+      .then((d) => {
+        const models = (d.data ?? [])
+          .filter((m: { status: string }) => m.status === "available")
+          .map((m: { name: string }) => ({ name: m.name, provider: "ollama" }));
+        setAvailableModels(models);
+      })
+      .catch(() => {});
+    // Fetch current copilot model config
+    fetch("/api/copilot/model", { credentials: "include" })
+      .then((r) => r.ok ? r.json() : {})
+      .then((d) => {
+        if (d.model) setSelectedModel({ model: d.model, provider: d.provider || "auto" });
+      })
+      .catch(() => {});
+  }, [copilotReady]);
 
   useEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
@@ -225,8 +251,37 @@ export function CopilotPanel({ agentId }: { agentId: string }) {
         )}
       </div>
 
-      {/* Input */}
-      <div className="border-t border-border bg-card px-3 py-3">
+      {/* Footer: model selector + input */}
+      <div className="border-t border-border bg-card px-3 py-2">
+        {/* Model selector row */}
+        <div className="mb-2 flex items-center gap-2">
+          <Settings2 size={12} className="shrink-0 text-muted-foreground" />
+          <select
+            value={selectedModel.model ? `${selectedModel.provider}:${selectedModel.model}` : "auto"}
+            onChange={(e) => {
+              const val = e.target.value;
+              if (val === "auto") {
+                setSelectedModel({ model: "", provider: "auto" });
+                fetch("/api/copilot/model", { method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify({ model: "", provider: "auto" }) });
+                setActiveBackend("auto-detect");
+              } else {
+                const [prov, ...rest] = val.split(":");
+                const model = rest.join(":");
+                setSelectedModel({ model, provider: prov });
+                fetch("/api/copilot/model", { method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify({ model, provider: prov }) });
+                setActiveBackend(`${prov}: ${model}`);
+              }
+            }}
+            className="flex-1 rounded border border-border bg-background px-2 py-1 text-[10px] text-muted-foreground outline-none focus:border-primary"
+          >
+            <option value="auto">Auto-detect (best available)</option>
+            {availableModels.map((m) => (
+              <option key={`${m.provider}:${m.name}`} value={`${m.provider}:${m.name}`}>
+                {m.name} ({m.provider})
+              </option>
+            ))}
+          </select>
+        </div>
         <div className="flex items-center gap-2">
           <input
             type="text"
