@@ -585,25 +585,23 @@ export default function ModelsPage() {
                             {isDownloading ? "Pulling..." : "Pull (Ollama)"}
                           </button>
                         ) : model.vllmId ? (
-                          <a
-                            href={`https://huggingface.co/${model.vllmId}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex h-8 items-center gap-1.5 rounded-lg border border-[var(--pilox-blue)]/30 px-3 text-[11px] text-[var(--pilox-blue)] hover:border-[var(--pilox-blue)] hover:bg-[var(--pilox-blue)]/5"
+                          <button
+                            onClick={() => pullModel(`hf.co/${model.vllmId}`, model.id)}
+                            disabled={isDownloading}
+                            className="flex h-8 items-center gap-1.5 rounded-lg border border-[var(--pilox-blue)]/30 px-3 text-[11px] text-[var(--pilox-blue)] hover:border-[var(--pilox-blue)] hover:bg-[var(--pilox-blue)]/5 disabled:opacity-40"
                           >
-                            <Download className="h-3 w-3" />
-                            Get model
-                          </a>
+                            {isDownloading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Download className="h-3 w-3" />}
+                            {isDownloading ? "Pulling..." : "Pull (HF)"}
+                          </button>
                         ) : model.huggingFaceId ? (
-                          <a
-                            href={`https://huggingface.co/${model.huggingFaceId}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex h-8 items-center gap-1.5 rounded-lg border border-border px-3 text-[11px] text-[var(--pilox-fg-secondary)] hover:border-[var(--pilox-purple)] hover:text-[var(--pilox-purple)]"
+                          <button
+                            onClick={() => pullModel(`hf.co/${model.huggingFaceId}`, model.id)}
+                            disabled={isDownloading}
+                            className="flex h-8 items-center gap-1.5 rounded-lg border border-border px-3 text-[11px] text-[var(--pilox-fg-secondary)] hover:border-[var(--pilox-purple)] hover:text-[var(--pilox-purple)] disabled:opacity-40"
                           >
-                            <ExternalLink className="h-3 w-3" />
-                            HuggingFace
-                          </a>
+                            {isDownloading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Download className="h-3 w-3" />}
+                            {isDownloading ? "Pulling..." : "Pull (HF)"}
+                          </button>
                         ) : (
                           <span className="text-[10px] text-muted-foreground opacity-50">Manual only</span>
                         )}

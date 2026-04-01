@@ -576,6 +576,99 @@ export function LlmProvidersPanel() {
           })}
         </div>
       )}
+
+      {/* ── Copilot Section ─────────────────────────── */}
+      <CopilotSettingsSection />
+    </div>
+  );
+}
+
+// ── Copilot Settings ─────────────────────────────────
+
+function CopilotSettingsSection() {
+  const [status, setStatus] = useState<"loading" | "ready" | "not_loaded" | "ollama_unavailable">("loading");
+  const [toggling, setToggling] = useState(false);
+
+  const loadStatus = useCallback(() => {
+    fetch("/api/copilot")
+      .then((r) => r.json())
+      .then((d) => setStatus(d.status ?? "not_loaded"))
+      .catch(() => setStatus("ollama_unavailable"));
+  }, []);
+
+  useEffect(() => {
+    loadStatus();
+  }, [loadStatus]);
+
+  const toggle = useCallback(async () => {
+    const action = status === "ready" ? "disable" : "enable";
+    setToggling(true);
+    try {
+      const res = await fetch("/api/copilot", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action }),
+      });
+      if (res.ok) {
+        toast.success(action === "enable" ? "Copilot model loaded" : "Copilot disabled");
+        loadStatus();
+      } else {
+        const j = await res.json().catch(() => ({}));
+        toast.error(j.message || `Failed to ${action} copilot`);
+      }
+    } catch {
+      toast.error("Network error");
+    } finally {
+      setToggling(false);
+    }
+  }, [status, loadStatus]);
+
+  const isReady = status === "ready";
+
+  return (
+    <div className="mt-8 rounded-xl border border-border p-5" style={{ backgroundColor: "var(--pilox-elevated)" }}>
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+            <Brain className="h-5 w-5 text-primary" />
+          </div>
+          <div>
+            <h3 className="text-sm font-semibold">Canvas Copilot</h3>
+            <p className="text-xs text-muted-foreground">
+              Fine-tuned LLM that suggests nodes and pipelines in the workflow builder
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-3">
+          <span className={`text-xs font-medium ${isReady ? "text-primary" : "text-muted-foreground"}`}>
+            {status === "loading" ? "Checking..." : isReady ? "Active" : status === "ollama_unavailable" ? "Ollama offline" : "Inactive"}
+          </span>
+          <button
+            onClick={toggle}
+            disabled={toggling || status === "loading" || status === "ollama_unavailable"}
+            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors disabled:opacity-50 ${
+              isReady ? "bg-primary" : "bg-muted"
+            }`}
+          >
+            {toggling ? (
+              <Loader2 className="absolute left-1/2 -translate-x-1/2 h-3.5 w-3.5 animate-spin text-white" />
+            ) : (
+              <span
+                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                  isReady ? "translate-x-6" : "translate-x-1"
+                }`}
+              />
+            )}
+          </button>
+        </div>
+      </div>
+      <p className="text-xs text-muted-foreground">
+        {isReady
+          ? "The copilot button appears in the canvas workflow builder. Ask it to suggest nodes, build pipelines, or explain workflows."
+          : status === "ollama_unavailable"
+            ? "Ollama is not running. Start Ollama to enable the copilot."
+            : "Enable to load the copilot model into Ollama. Once active, a copilot button appears in the canvas."}
+      </p>
     </div>
   );
 }
