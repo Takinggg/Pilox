@@ -48,7 +48,7 @@ app = modal.App("hive-copilot-lora")
 
 @app.function(
     image=image,
-    gpu="A10G",
+    gpu="L4",
     timeout=60 * 60 * 24,
     volumes={"/output": lora_output_vol},
 )

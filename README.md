@@ -10,14 +10,16 @@ Deploy, connect, and manage AI agents across your infrastructure — with built-
 # 1. Clone
 git clone https://github.com/Takinggg/Pilox.git && cd Pilox
 
-# 2. Start infrastructure (PostgreSQL, Redis, Traefik)
-cd app && docker compose up -d
+# 2. Start (auto-detects GPU, generates secrets, builds everything)
+bash scripts/start.sh
 
-# 3. Start the full stack (app + planetary mesh)
-cd .. && docker compose -f docker/docker-compose.local.yml --env-file docker/.env up -d --build
-
-# 4. Open http://localhost:3000/setup
+# 3. Open http://localhost:3000/setup
 ```
+
+The start script automatically:
+- Generates secure random secrets if no `.env` exists
+- Detects NVIDIA GPUs and enables vLLM for HuggingFace models
+- Starts PostgreSQL, Redis, Ollama, and the full Pilox stack
 
 ## Architecture
 
