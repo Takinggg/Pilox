@@ -37,7 +37,10 @@ export function CopilotPanel({ agentId }: { agentId: string }) {
   // Check if copilot model is loaded in Ollama
   useEffect(() => {
     fetch("/api/copilot", { credentials: "include" })
-      .then((r) => r.json())
+      .then((r) => {
+        if (!r.ok) return { enabled: false };
+        return r.json();
+      })
       .then((data) => setCopilotReady(data.enabled === true))
       .catch(() => setCopilotReady(false));
   }, []);

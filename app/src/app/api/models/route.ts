@@ -49,8 +49,13 @@ export async function GET(req: Request) {
       db.select().from(models),
     ]);
 
-    const dbByName = new Map(dbModels.map((m) => [m.name, m]));
-    const ollamaByName = new Map(ollamaModels.map((m) => [m.name, m]));
+    // Normalize model names: strip ":latest" suffix for deduplication
+    const normalizeName = (name: string) => name.replace(/:latest$/, "");
+
+    const dbByName = new Map(dbModels.map((m) => [normalizeName(m.name), m]));
+    const ollamaByName = new Map(ollamaModels.map((m) => [normalizeName(m.name), m]));
+    // Track seen names to prevent duplicates in merged output
+    const seenNames = new Set<string>();
 
     const merged: Array<Record<string, unknown>> = [];
 
@@ -59,7 +64,10 @@ export async function GET(req: Request) {
 
     // Build merged list from Ollama models
     for (const om of ollamaModels) {
-      const existing = dbByName.get(om.name);
+      const normalName = normalizeName(om.name);
+      if (seenNames.has(normalName)) continue;
+      seenNames.add(normalName);
+      const existing = dbByName.get(normalName);
 
       if (existing) {
         merged.push({
@@ -111,7 +119,10 @@ export async function GET(req: Request) {
 
     // Include DB-only records (non-ollama providers or models still pulling)
     for (const dbm of dbModels) {
-      if (!ollamaByName.has(dbm.name)) {
+      const normalDbName = normalizeName(dbm.name);
+      if (seenNames.has(normalDbName)) continue;
+      seenNames.add(normalDbName);
+      if (!ollamaByName.has(normalDbName)) {
         if (dbm.provider === "ollama" && dbm.status === "available") {
           syncOps.push(() =>
             db.update(models).set({ status: "unavailable" }).where(eq(models.id, dbm.id))

@@ -15,9 +15,7 @@ const COPILOT_MODEL = process.env.PILOX_COPILOT_MODEL || "hive-copilot";
  */
 export async function GET(req: Request) {
   return withHttpServerSpan(req, "GET /api/copilot", async () => {
-    const authResult = await authorize("viewer");
-    if (!authResult.authorized) return authResult.response;
-
+    // No auth required for status check — the panel needs to know if copilot is available
     try {
       const models = await listModels();
       const found = models.find((m) => m.name === COPILOT_MODEL || m.name.startsWith(COPILOT_MODEL + ":"));

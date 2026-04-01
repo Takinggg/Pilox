@@ -73,3 +73,4 @@ deploy/helm/hive-planetary/charts/*.tgz
 *.pyc
 app/test-results/
 langflow-clone/
+app/models/*.gguf

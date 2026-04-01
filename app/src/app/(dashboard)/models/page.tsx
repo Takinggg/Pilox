@@ -166,7 +166,7 @@ export default function ModelsPage() {
         toast.success(`${displayKey} downloaded — LocalAI is loading it`);
         setTimeout(() => {
           setDownloadStates((prev) => { const n = new Map(prev); n.delete(displayKey); return n; });
-          void loadModels();
+          void fetchModels();
         }, 5000);
       } else {
         updateDownloadState(displayKey, { error: (data as { error?: string }).error || `Failed (${res.status})` });

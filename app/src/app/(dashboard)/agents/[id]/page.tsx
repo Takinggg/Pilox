@@ -1595,7 +1595,7 @@ export default function AgentDetailPage() {
                   type="button"
                   onClick={() => void runRegistryPublish()}
                   disabled={!canOperate || prPublishBusy}
-                  className="flex h-9 items-center rounded-lg bg-primary px-4 text-[13px] font-medium text-secondary-foreground hover:bg-primary/80 disabled:opacity-50"
+                  className="flex h-9 items-center rounded-lg bg-primary px-4 text-[13px] font-medium text-primary-foreground hover:bg-primary/80 disabled:opacity-50"
                 >
                   {prPublishBusy ? "…" : "Publish to Hub"}
                 </button>
