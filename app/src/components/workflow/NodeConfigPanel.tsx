@@ -32,6 +32,7 @@ import {
 import {
   Bot, GitBranch, Sparkles, Play, Trash2,
   Brain, FileText, Search, Wrench, Database, Globe, Code2, Repeat,
+  Binary, Tag, ImageIcon, Mic,
 } from "lucide-react";
 import type { StepType, CatalogNodeDef } from "./types";
 
@@ -55,6 +56,10 @@ const stepTypeLabels: Record<StepType, { label: string; icon: React.ReactNode }>
   http: { label: "HTTP Request", icon: <Globe className="h-4 w-4" /> },
   code: { label: "Code", icon: <Code2 className="h-4 w-4" /> },
   loop: { label: "Loop", icon: <Repeat className="h-4 w-4" /> },
+  embedding: { label: "Embedding", icon: <Binary className="h-4 w-4" /> },
+  classifier: { label: "Classifier", icon: <Tag className="h-4 w-4" /> },
+  "image-gen": { label: "Image Generation", icon: <ImageIcon className="h-4 w-4" /> },
+  audio: { label: "Audio", icon: <Mic className="h-4 w-4" /> },
 };
 
 export function NodeConfigPanel() {
