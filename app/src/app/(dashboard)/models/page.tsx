@@ -37,6 +37,14 @@ import {
   type ModelCategory,
   type HardwareTier,
 } from "@/lib/llm-model-catalog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import { InferenceSetupPanel } from "@/components/settings/inference";
 
 // ── Types ────────────────────────────────────────────
 
@@ -90,6 +98,10 @@ export default function ModelsPage() {
 
   // Concurrent download tracking
   const [downloadStates, setDownloadStates] = useState<Map<string, DownloadState>>(new Map());
+
+  // Inference config popup — opens when a model pull starts
+  const [showInferenceConfig, setShowInferenceConfig] = useState(false);
+  const [configModelName, setConfigModelName] = useState<string | null>(null);
 
   // Import modal
   const [showImport, setShowImport] = useState(false);
@@ -181,6 +193,10 @@ export default function ModelsPage() {
     if (downloadStates.has(displayKey)) return;
     updateDownloadState(displayKey, { progress: 0, status: "Configuring vLLM...", error: undefined });
 
+    // Open inference config popup while downloading
+    setConfigModelName(modelName);
+    setShowInferenceConfig(true);
+
     try {
       const res = await fetch("/api/models/pull-vllm", {
         method: "POST",
@@ -260,6 +276,11 @@ export default function ModelsPage() {
     if (downloadStates.has(key)) return; // already pulling
 
     updateDownloadState(key, { progress: 0, status: "Starting download...", error: undefined });
+
+    // Open inference config popup while downloading
+    const catalogModel = MODEL_CATALOG.find((m) => m.ollamaId === ollamaName || m.id === key);
+    setConfigModelName(catalogModel?.name ?? ollamaName);
+    setShowInferenceConfig(true);
 
     try {
       const res = await fetch("/api/models/pull", {
@@ -786,6 +807,20 @@ export default function ModelsPage() {
           </div>
         </div>
       )}
+      {/* ─── Inference Config Popup ─── */}
+      <Dialog open={showInferenceConfig} onOpenChange={setShowInferenceConfig}>
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Configure Inference{configModelName ? ` — ${configModelName}` : ""}</DialogTitle>
+            <DialogDescription>
+              Configure how Pilox runs this model while it downloads. Your settings will be applied when the model is ready.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="mt-2">
+            <InferenceSetupPanel />
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
