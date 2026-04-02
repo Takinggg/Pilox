@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
-import { models, auditLogs } from "@/db/schema";
+import { models, modelInstances, auditLogs } from "@/db/schema";
 import { authorize } from "@/lib/authorize";
 import {
   listModels,
@@ -132,6 +132,51 @@ export async function GET(req: Request) {
           merged.push(dbm);
         }
       }
+    }
+
+    // Include dedicated inference instances (model_instances table)
+    try {
+      const instances = await db.select().from(modelInstances);
+      for (const inst of instances) {
+        const normalName = normalizeName(inst.modelName);
+        if (seenNames.has(normalName)) {
+          // Model exists in both Ollama and as instance — enrich with instance info
+          const existing = merged.find((m) => normalizeName(String(m.name)) === normalName);
+          if (existing) {
+            existing.instanceId = inst.id;
+            existing.instanceBackend = inst.backend;
+            existing.instanceStatus = inst.status;
+            existing.instanceContainerId = inst.instanceId;
+            existing.instancePort = inst.port;
+            existing.quantization = inst.quantization;
+            existing.turboQuant = inst.turboQuant;
+            existing.speculativeDecoding = inst.speculativeDecoding;
+            existing.gpuEnabled = inst.gpuEnabled;
+          }
+        } else {
+          // Instance-only model (not in Ollama, e.g. vLLM-only)
+          seenNames.add(normalName);
+          merged.push({
+            name: inst.modelName,
+            provider: inst.backend,
+            status: inst.status === "running" ? "available" : inst.status,
+            parameterSize: inst.parameterSize,
+            quantizationLevel: inst.quantization,
+            family: inst.family,
+            instanceId: inst.id,
+            instanceBackend: inst.backend,
+            instanceStatus: inst.status,
+            instanceContainerId: inst.instanceId,
+            instancePort: inst.port,
+            turboQuant: inst.turboQuant,
+            speculativeDecoding: inst.speculativeDecoding,
+            gpuEnabled: inst.gpuEnabled,
+            instanceError: inst.error,
+          });
+        }
+      }
+    } catch {
+      // model_instances table might not exist yet — non-fatal
     }
 
     // Fire-and-forget: batch all DB sync operations (don't block the response)

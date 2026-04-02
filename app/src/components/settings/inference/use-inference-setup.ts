@@ -52,6 +52,9 @@ export interface InferenceSetupState {
   // Instance creation
   instanceStatus: string | null;
   instanceError: string | null;
+
+  // Delete Ollama prompt (shown when switching to vLLM)
+  showDeleteOllamaPrompt: boolean;
 }
 
 /** Model as returned by GET /api/models */
@@ -90,8 +93,9 @@ export interface InferenceSetupActions {
   setPrefixCaching: (v: boolean) => void;
   setVptq: (v: boolean) => void;
   setModelSearch: (v: string) => void;
-  applyConfig: () => Promise<boolean>;
+  applyConfig: (deleteOllama?: boolean) => Promise<boolean>;
   runBenchmark: () => Promise<void>;
+  dismissDeletePrompt: () => void;
 }
 
 export type UseInferenceSetup = InferenceSetupState & InferenceSetupActions;
@@ -239,15 +243,26 @@ export function useInferenceSetup(): UseInferenceSetup {
   // with the selected optimization settings.
   const [instanceStatus, setInstanceStatus] = useState<string | null>(null);
   const [instanceError, setInstanceError] = useState<string | null>(null);
+  const [showDeleteOllamaPrompt, setShowDeleteOllamaPrompt] = useState(false);
 
-  const applyConfig = useCallback(async (): Promise<boolean> => {
+  const dismissDeletePrompt = useCallback(() => setShowDeleteOllamaPrompt(false), []);
+
+  const applyConfig = useCallback(async (deleteOllama?: boolean): Promise<boolean> => {
     if (!selectedModel) return false;
     const s = stateRef.current;
+
+    // If switching to vLLM and model exists in Ollama, show delete prompt first
+    const modelDef = installedModels.find((m) => m.name === selectedModel);
+    if (s.selectedBackend === "vllm" && modelDef?.provider === "ollama" && deleteOllama === undefined) {
+      setShowDeleteOllamaPrompt(true);
+      return false; // Wait for user decision
+    }
+    setShowDeleteOllamaPrompt(false);
+
     setApplying(true);
     setInstanceStatus("Creating instance...");
     setInstanceError(null);
     try {
-      const modelDef = installedModels.find((m) => m.name === selectedModel);
       const paramB = modelDef ? parseFloat(modelDef.parameterSize) || 0 : 0;
       const needsGpu = paramB > 13 || s.selectedBackend === "vllm";
 
@@ -276,6 +291,21 @@ export function useInferenceSetup(): UseInferenceSetup {
       if (res.ok) {
         const data = await res.json();
         setInstanceStatus(`Instance created (${data.instance?.status || "starting"}). Container: ${data.instance?.instanceId?.slice(0, 12) || "pending"}`);
+
+        // Delete Ollama version if requested
+        if (deleteOllama && modelDef?.provider === "ollama") {
+          setInstanceStatus((prev) => (prev || "") + " Deleting Ollama copy...");
+          try {
+            await fetch(`/api/models/${encodeURIComponent(selectedModel)}`, {
+              method: "DELETE",
+              credentials: "include",
+            });
+            setInstanceStatus((prev) => (prev || "") + " Ollama copy deleted.");
+          } catch {
+            // Non-fatal — instance is already created
+          }
+        }
+
         return true;
       } else {
         const err = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
@@ -348,11 +378,11 @@ export function useInferenceSetup(): UseInferenceSetup {
     selectedBackend, selectedModel, quantization, turboQuant, speculative,
     cpuOffload, contextLen, prefixCaching, vptq, modelSearch,
     installedModels, filteredModels, maxOffloadGB, selectedModelDef,
-    benchmarking, benchmarkResult, instanceStatus, instanceError,
+    benchmarking, benchmarkResult, instanceStatus, instanceError, showDeleteOllamaPrompt,
     // Actions
     setMode, setStep, setSelectedBackend, setSelectedModel, setQuantization,
     setTurboQuant, setSpeculative, setCpuOffload, setContextLen,
-    setPrefixCaching, setVptq, setModelSearch, applyConfig, runBenchmark,
+    setPrefixCaching, setVptq, setModelSearch, applyConfig, runBenchmark, dismissDeletePrompt,
   };
 }
 

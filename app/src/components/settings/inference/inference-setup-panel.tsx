@@ -111,6 +111,44 @@ export function InferenceSetupPanel() {
         />
       )}
 
+      {/* Delete Ollama prompt (when switching to vLLM) */}
+      {s.showDeleteOllamaPrompt && (
+        <div className="rounded-xl border border-pilox-yellow/30 bg-pilox-yellow/5 p-5">
+          <h3 className="text-sm font-semibold text-foreground">Switch to vLLM</h3>
+          <p className="mt-1 text-xs text-muted-foreground">
+            This model exists in Ollama format ({s.selectedModelDef?.parameterSize || "?"}).
+            Deploying via vLLM requires re-downloading in AWQ format.
+            Delete the Ollama copy to save storage?
+          </p>
+          <div className="mt-3 flex gap-2">
+            <button
+              onClick={async () => {
+                const ok = await s.applyConfig(true);
+                if (ok) toast.success("vLLM instance created. Ollama copy deleted.");
+              }}
+              className="rounded-lg bg-destructive px-4 py-2 text-xs font-medium text-white hover:bg-destructive/90"
+            >
+              Delete Ollama copy & deploy vLLM
+            </button>
+            <button
+              onClick={async () => {
+                const ok = await s.applyConfig(false);
+                if (ok) toast.success("vLLM instance created. Ollama copy kept.");
+              }}
+              className="rounded-lg border border-border px-4 py-2 text-xs font-medium text-muted-foreground hover:text-foreground"
+            >
+              Keep both & deploy vLLM
+            </button>
+            <button
+              onClick={s.dismissDeletePrompt}
+              className="rounded-lg px-4 py-2 text-xs text-muted-foreground hover:text-foreground"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Instance status */}
       {s.instanceStatus && (
         <div className="flex items-center gap-2 rounded-lg bg-pilox-blue/10 px-4 py-3 text-sm text-pilox-blue">
@@ -124,24 +162,24 @@ export function InferenceSetupPanel() {
         </div>
       )}
 
-      {/* Apply button */}
-      <div className="flex items-center gap-3">
-        <button
-          onClick={async () => {
-            const ok = await s.applyConfig();
-            if (ok) {
-              toast.success("Instance created. Container is starting with your settings.");
-            } else {
-              toast.error("Failed to create instance. Check the error above.");
-            }
-          }}
-          disabled={!s.estimate?.fits || s.applying}
-          className="flex h-10 items-center gap-2 rounded-lg bg-primary px-6 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
-        >
-          {s.applying && <Loader2 className="h-4 w-4 animate-spin" />}
-          {s.applying ? "Creating instance..." : s.mode === "auto" ? "Deploy Instance" : "Deploy Instance"}
-        </button>
-      </div>
+      {/* Deploy button */}
+      {!s.showDeleteOllamaPrompt && (
+        <div className="flex items-center gap-3">
+          <button
+            onClick={async () => {
+              const ok = await s.applyConfig();
+              if (ok) {
+                toast.success("Instance created. Container is starting with your settings.");
+              }
+            }}
+            disabled={!s.estimate?.fits || s.applying || !s.selectedModel}
+            className="flex h-10 items-center gap-2 rounded-lg bg-primary px-6 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
+          >
+            {s.applying && <Loader2 className="h-4 w-4 animate-spin" />}
+            {s.applying ? "Creating instance..." : "Deploy Instance"}
+          </button>
+        </div>
+      )}
     </div>
   );
 }
