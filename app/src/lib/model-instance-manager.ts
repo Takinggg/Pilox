@@ -370,7 +370,9 @@ async function createVllmContainer(
 ): Promise<{ containerId: string; ip: string; port: number }> {
   const containerName = `pilox-vllm-${sanitizeName(config.modelName)}-${instanceId.slice(0, 8)}`;
   const hostPort = await findFreePort(8001, 8099);
-  const hfModelName = resolveVllmModelName(config.modelName, config.quantization);
+  // VPTQ is a separate boolean — override quantization when enabled
+  const effectiveQuant = config.vptq ? "vptq" : config.quantization;
+  const hfModelName = resolveVllmModelName(config.modelName, effectiveQuant);
 
   log.info("vLLM model name resolved", { original: config.modelName, quantization: config.quantization, resolved: hfModelName });
 
