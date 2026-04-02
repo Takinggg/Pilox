@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 "use client";
 
-import { Loader2, Settings2, Zap } from "lucide-react";
+import { CheckCircle2, Loader2, Settings2, Zap } from "lucide-react";
 import { toast } from "sonner";
 import { EXPERT_STEPS, QUANT_OPTIONS, type ExpertStep, type Quantization, type WizardMode } from "./types";
 import { useInferenceSetup } from "./use-inference-setup";
@@ -149,8 +149,33 @@ export function InferenceSetupPanel() {
         </div>
       )}
 
-      {/* Instance status */}
-      {s.instanceStatus && (
+      {/* Deploy progress bar */}
+      {s.deployProgress && (
+        <div className="rounded-xl border border-border bg-card p-4">
+          <div className="flex items-center gap-3">
+            {s.deployProgress.percent >= 100 ? (
+              <CheckCircle2 className="h-4 w-4 text-primary shrink-0" />
+            ) : (
+              <Loader2 className="h-4 w-4 animate-spin text-primary shrink-0" />
+            )}
+            <span className="text-xs font-medium text-foreground truncate">
+              {s.selectedModelDef?.name || s.selectedModel}
+            </span>
+            <div className="flex-1 h-1.5 overflow-hidden rounded-full bg-[var(--pilox-border)]">
+              <div
+                className="h-full rounded-full bg-primary transition-all duration-300"
+                style={{ width: `${s.deployProgress.percent}%` }}
+              />
+            </div>
+            <span className="text-[10px] text-muted-foreground shrink-0 w-16 text-right">
+              {s.deployProgress.status}
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* Instance status (shown when no progress bar active) */}
+      {!s.deployProgress && s.instanceStatus && (
         <div className="flex items-center gap-2 rounded-lg bg-pilox-blue/10 px-4 py-3 text-sm text-pilox-blue">
           <Loader2 className="h-4 w-4 animate-spin" />
           {s.instanceStatus}

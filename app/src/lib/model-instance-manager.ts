@@ -21,6 +21,17 @@ import { createModuleLogger } from "./logger";
 
 const log = createModuleLogger("model-instance-manager");
 
+// ── Pull progress (in-memory, consumed by SSE endpoint) ──
+
+export interface PullProgress {
+  completed: number;
+  total: number;
+  status: string;
+}
+
+/** Live pull progress per instance ID. Entries removed on completion/error. */
+export const pullProgressMap = new Map<string, PullProgress>();
+
 // ── Types ───────────────────────────────────────────
 
 export interface ModelInstanceConfig {
@@ -280,7 +291,8 @@ async function createOllamaContainer(
 }
 
 /**
- * Pull a model inside an Ollama container and update DB status when done.
+ * Pull a model inside an Ollama container with streaming progress.
+ * Progress is stored in `pullProgressMap` so the SSE endpoint can relay it.
  */
 async function pullModelInOllama(containerHost: string, modelName: string, dbInstanceId: string): Promise<void> {
   // Wait for Ollama to be ready
@@ -294,24 +306,81 @@ async function pullModelInOllama(containerHost: string, modelName: string, dbIns
     await new Promise((r) => setTimeout(r, 2_000));
   }
 
-  // Pull the model
+  // Init progress tracking
+  pullProgressMap.set(dbInstanceId, { completed: 0, total: 0, status: "starting" });
+
+  // Pull with streaming enabled — Ollama sends NDJSON lines
   const resp = await fetch(`http://${containerHost}:11434/api/pull`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ name: modelName, stream: false }),
-    signal: AbortSignal.timeout(600_000), // 10 min timeout for large models
+    body: JSON.stringify({ name: modelName, stream: true }),
+    signal: AbortSignal.timeout(1_800_000), // 30 min timeout for very large models
   });
 
-  if (resp.ok) {
+  if (!resp.ok || !resp.body) {
+    const body = await resp.text().catch(() => "");
+    pullProgressMap.delete(dbInstanceId);
+    await db.update(modelInstances)
+      .set({ status: "error", error: `Pull failed: ${body.slice(0, 200)}`, updatedAt: new Date() })
+      .where(eq(modelInstances.id, dbInstanceId));
+    return;
+  }
+
+  // Parse NDJSON stream from Ollama
+  const reader = resp.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split("\n");
+      buffer = lines.pop() ?? "";
+
+      for (const line of lines) {
+        if (!line.trim()) continue;
+        try {
+          const evt = JSON.parse(line) as {
+            status?: string;
+            completed?: number;
+            total?: number;
+            error?: string;
+          };
+
+          if (evt.error) {
+            pullProgressMap.delete(dbInstanceId);
+            await db.update(modelInstances)
+              .set({ status: "error", error: evt.error.slice(0, 500), updatedAt: new Date() })
+              .where(eq(modelInstances.id, dbInstanceId));
+            return;
+          }
+
+          // Update in-memory progress
+          pullProgressMap.set(dbInstanceId, {
+            completed: evt.completed ?? 0,
+            total: evt.total ?? 0,
+            status: evt.status ?? "downloading",
+          });
+        } catch { /* malformed JSON line, skip */ }
+      }
+    }
+
+    // Pull complete
+    pullProgressMap.delete(dbInstanceId);
     await db.update(modelInstances)
       .set({ status: "running", updatedAt: new Date() })
       .where(eq(modelInstances.id, dbInstanceId));
     log.info("Model pulled and running", { model: modelName, instanceId: dbInstanceId });
-  } else {
-    const body = await resp.text().catch(() => "");
+  } catch (err) {
+    pullProgressMap.delete(dbInstanceId);
+    const errorMsg = err instanceof Error ? err.message : String(err);
     await db.update(modelInstances)
-      .set({ status: "error", error: `Pull failed: ${body.slice(0, 200)}`, updatedAt: new Date() })
+      .set({ status: "error", error: `Pull stream error: ${errorMsg.slice(0, 200)}`, updatedAt: new Date() })
       .where(eq(modelInstances.id, dbInstanceId));
+    log.error("Ollama pull stream failed", { model: modelName, error: errorMsg });
   }
 }
 

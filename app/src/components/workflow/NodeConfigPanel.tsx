@@ -62,15 +62,49 @@ const stepTypeLabels: Record<StepType, { label: string; icon: React.ReactNode }>
   audio: { label: "Audio", icon: <Mic className="h-4 w-4" /> },
 };
 
+interface LlmModelOption {
+  name: string;
+  provider: string;
+  instanceId?: string;
+  instanceStatus?: string;
+  instanceBackend?: string;
+  instancePort?: number;
+  parameterSize?: string;
+}
+
 export function NodeConfigPanel() {
   const { nodes, selectedNodeId, selectNode, updateNodeData, deleteNode } = useWorkflow();
   const [agents, setAgents] = useState<AgentOption[]>([]);
   const [agentsLoaded, setAgentsLoaded] = useState(false);
+  const [llmModels, setLlmModels] = useState<LlmModelOption[]>([]);
+  const [llmModelsLoaded, setLlmModelsLoaded] = useState(false);
 
   const selectedNode = nodes.find((n) => n.id === selectedNodeId);
   const isOpen = !!selectedNode && selectedNode.type !== WfNodeType.ADD_BUTTON && selectedNode.type !== WfNodeType.END_WIDGET;
   const stepType = (selectedNode?.data?.stepType as StepType) ?? "agent";
   const meta = stepTypeLabels[stepType] ?? stepTypeLabels.agent;
+
+  // Fetch models list for LLM nodes (includes running instances)
+  useEffect(() => {
+    if (stepType === "llm" && !llmModelsLoaded) {
+      fetch("/api/models?limit=100")
+        .then((r) => r.json())
+        .then((data) => {
+          const list: LlmModelOption[] = ((data.data ?? []) as Record<string, unknown>[]).map((m) => ({
+            name: m.name as string,
+            provider: (m.provider as string) ?? "ollama",
+            instanceId: m.instanceId as string | undefined,
+            instanceStatus: m.instanceStatus as string | undefined,
+            instanceBackend: m.instanceBackend as string | undefined,
+            instancePort: m.instancePort as number | undefined,
+            parameterSize: m.parameterSize as string | undefined,
+          }));
+          setLlmModels(list);
+          setLlmModelsLoaded(true);
+        })
+        .catch(() => setLlmModelsLoaded(true));
+    }
+  }, [stepType, llmModelsLoaded]);
 
   // Fetch agents list for agent-type nodes
   useEffect(() => {
@@ -206,12 +240,59 @@ export function NodeConfigPanel() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="llm-model">Model</Label>
-                  <Input
-                    id="llm-model"
-                    value={(d.model as string) ?? ""}
-                    onChange={(e) => handleChange("model", e.target.value)}
-                    placeholder="e.g. llama3.2, gpt-4o, claude-sonnet-4-20250514"
-                  />
+                  {llmModels.length > 0 ? (
+                    <Select
+                      value={(d.model as string) ?? ""}
+                      onValueChange={(val) => {
+                        handleChange("model", val);
+                        // If selecting a running instance, store its ID and auto-set provider
+                        const m = llmModels.find((x) => x.name === val);
+                        if (m?.instanceId && m.instanceStatus === "running") {
+                          handleChange("instanceId", m.instanceId);
+                          handleChange("provider", m.instanceBackend ?? m.provider);
+                        } else {
+                          handleChange("instanceId", undefined);
+                        }
+                      }}
+                    >
+                      <SelectTrigger id="llm-model"><SelectValue placeholder="Select a model" /></SelectTrigger>
+                      <SelectContent>
+                        {/* Running instances first */}
+                        {llmModels.filter((m) => m.instanceId && m.instanceStatus === "running").length > 0 && (
+                          <>
+                            <SelectItem value="__header_instances" disabled>
+                              Running Instances
+                            </SelectItem>
+                            {llmModels
+                              .filter((m) => m.instanceId && m.instanceStatus === "running")
+                              .map((m) => (
+                                <SelectItem key={`inst-${m.instanceId}`} value={m.name}>
+                                  {m.name} ({m.instanceBackend}{m.instancePort ? `:${m.instancePort}` : ""})
+                                </SelectItem>
+                              ))}
+                          </>
+                        )}
+                        {/* Available models */}
+                        <SelectItem value="__header_models" disabled>
+                          Available Models
+                        </SelectItem>
+                        {llmModels
+                          .filter((m) => !m.instanceId || m.instanceStatus !== "running")
+                          .map((m) => (
+                            <SelectItem key={m.name} value={m.name}>
+                              {m.name} {m.parameterSize ? `(${m.parameterSize})` : ""}
+                            </SelectItem>
+                          ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <Input
+                      id="llm-model"
+                      value={(d.model as string) ?? ""}
+                      onChange={(e) => handleChange("model", e.target.value)}
+                      placeholder="e.g. llama3.2, gpt-4o, claude-sonnet-4-20250514"
+                    />
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="llm-system">System Prompt</Label>

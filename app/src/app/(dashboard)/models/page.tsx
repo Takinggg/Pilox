@@ -60,6 +60,12 @@ interface InstalledModel {
   ollamaSize?: number;
   modifiedAt?: string;
   digest?: string;
+  // Instance fields (enriched by GET /api/models)
+  instanceId?: string;
+  instanceBackend?: string;
+  instanceStatus?: string;
+  instancePort?: number;
+  instanceContainerId?: string;
 }
 
 interface DownloadState {
@@ -132,6 +138,11 @@ export default function ModelsPage() {
             ollamaSize: m.ollamaSize as number | undefined,
             modifiedAt: m.modifiedAt as string | undefined,
             digest: m.digest as string | undefined,
+            instanceId: m.instanceId as string | undefined,
+            instanceBackend: m.instanceBackend as string | undefined,
+            instanceStatus: m.instanceStatus as string | undefined,
+            instancePort: m.instancePort as number | undefined,
+            instanceContainerId: m.instanceContainerId as string | undefined,
           })),
         );
       }
@@ -394,6 +405,23 @@ export default function ModelsPage() {
     setActionMenu(null);
   }
 
+  async function handleInstanceAction(instanceId: string, action: "stop" | "destroy") {
+    try {
+      const res = await fetch(`/api/system/inference/instances?id=${instanceId}&action=${action}`, {
+        method: "DELETE",
+      });
+      if (res.ok) {
+        toast.success(action === "stop" ? "Instance stopped" : "Instance removed");
+        void fetchModels();
+      } else {
+        toast.error(`Failed to ${action} instance`);
+      }
+    } catch {
+      toast.error(`Failed to ${action} instance`);
+    }
+    setActionMenu(null);
+  }
+
   // ── Format helpers ────────────────────────────────
 
   function formatSize(bytes?: number) {
@@ -595,8 +623,13 @@ export default function ModelsPage() {
                     pulling: { dot: "bg-[var(--pilox-yellow)]", text: "text-[var(--pilox-yellow)]", label: "Pulling" },
                     error: { dot: "bg-destructive", text: "text-destructive", label: "Error" },
                     unavailable: { dot: "bg-muted-foreground", text: "text-muted-foreground", label: "Unavailable" },
+                    running: { dot: "bg-primary", text: "text-primary", label: "Running" },
+                    creating: { dot: "bg-[var(--pilox-yellow)]", text: "text-[var(--pilox-yellow)]", label: "Creating" },
+                    stopped: { dot: "bg-muted-foreground", text: "text-muted-foreground", label: "Stopped" },
                   };
-                  const st = statusColors[model.status] ?? statusColors.unavailable;
+                  // Use instance status if available, otherwise model status
+                  const displayStatus = model.instanceStatus ?? model.status;
+                  const st = statusColors[displayStatus] ?? statusColors.unavailable;
 
                   return (
                     <div
@@ -612,9 +645,16 @@ export default function ModelsPage() {
                       <span className="w-[100px] text-xs text-[var(--pilox-fg-secondary)]">{model.family ?? "—"}</span>
                       <span className="w-[80px] font-mono text-[10px] text-muted-foreground">{model.quantizationLevel ?? "—"}</span>
                       <span className="w-[90px]">
-                        <span className="flex items-center gap-1.5">
-                          <span className={`h-1.5 w-1.5 rounded-full ${st.dot}`} />
-                          <span className={`text-xs ${st.text}`}>{st.label}</span>
+                        <span className="flex flex-col gap-0.5">
+                          <span className="flex items-center gap-1.5">
+                            <span className={`h-1.5 w-1.5 rounded-full ${st.dot}`} />
+                            <span className={`text-xs ${st.text}`}>{st.label}</span>
+                          </span>
+                          {model.instanceId && (
+                            <span className="text-[9px] text-muted-foreground/70 uppercase tracking-wider">
+                              {model.instanceBackend}{model.instancePort ? `:${model.instancePort}` : ""}
+                            </span>
+                          )}
                         </span>
                       </span>
                       <span className="w-[80px] text-[10px] text-muted-foreground">{formatDate(model.modifiedAt)}</span>
@@ -626,7 +666,23 @@ export default function ModelsPage() {
                           <MoreHorizontal className="h-4 w-4" />
                         </button>
                         {actionMenu === model.name && (
-                          <div className="absolute right-0 top-8 z-50 min-w-[140px] rounded-lg border border-border bg-card py-1 shadow-xl">
+                          <div className="absolute right-0 top-8 z-50 min-w-[160px] rounded-lg border border-border bg-card py-1 shadow-xl">
+                            {model.instanceId && model.instanceStatus === "running" && (
+                              <button
+                                onClick={() => handleInstanceAction(model.instanceId!, "stop")}
+                                className="flex w-full items-center gap-2 px-3 py-1.5 text-xs text-[var(--pilox-fg-secondary)] hover:bg-[var(--pilox-elevated)]"
+                              >
+                                <X className="h-3.5 w-3.5" /> Stop Instance
+                              </button>
+                            )}
+                            {model.instanceId && model.instanceStatus === "stopped" && (
+                              <button
+                                onClick={() => handleInstanceAction(model.instanceId!, "destroy")}
+                                className="flex w-full items-center gap-2 px-3 py-1.5 text-xs text-[var(--pilox-fg-secondary)] hover:bg-[var(--pilox-elevated)]"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" /> Remove Instance
+                              </button>
+                            )}
                             <button
                               onClick={() => handleDelete(model.name)}
                               className="flex w-full items-center gap-2 px-3 py-1.5 text-xs text-destructive hover:bg-[var(--pilox-elevated)]"

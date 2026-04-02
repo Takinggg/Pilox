@@ -3,6 +3,7 @@
 
 import { createModuleLogger } from "../../logger";
 import { getOllamaBaseUrl } from "../../runtime-instance-config";
+import { getModelInstance } from "../../model-instance-manager";
 import { fetchWithTimeout, readErrorBodySnippet } from "../net";
 import { substituteVariables } from "../graph";
 import type { WorkflowNode } from "../types";
@@ -27,9 +28,27 @@ export async function executeLlmNode(
   if (systemPrompt) messages.push({ role: "system", content: substituteVariables(systemPrompt, variables) });
   messages.push({ role: "user", content: userContent });
 
-  // Route to appropriate provider — auto-detect vLLM availability
+  // Route to appropriate provider — check for dedicated instance first
+  const instanceId = node.data.instanceId as string | undefined;
   let resolvedProvider = provider ?? "ollama";
-  if (resolvedProvider === "ollama" || resolvedProvider === "auto") {
+  let instanceUrl: string | null = null;
+
+  // If a specific model instance is configured, resolve its IP:port
+  if (instanceId) {
+    try {
+      const inst = await getModelInstance(instanceId);
+      if (inst && inst.status === "running" && inst.instanceIp) {
+        const port = inst.port ?? (inst.backend === "vllm" ? 8000 : 11434);
+        instanceUrl = `http://${inst.instanceIp}:${port}`;
+        resolvedProvider = inst.backend;
+        log.info("workflow.llm.instance_route", { instanceId, url: instanceUrl, backend: inst.backend });
+      }
+    } catch (err) {
+      log.warn("workflow.llm.instance_lookup_failed", { instanceId, error: err instanceof Error ? err.message : String(err) });
+    }
+  }
+
+  if (!instanceUrl && (resolvedProvider === "ollama" || resolvedProvider === "auto")) {
     // If the model looks like a HuggingFace ID (contains /), try vLLM first
     if (String(model).includes("/")) {
       try {
@@ -44,7 +63,8 @@ export async function executeLlmNode(
   const headers: Record<string, string> = { "Content-Type": "application/json" };
 
   if (resolvedProvider === "ollama") {
-    url = `${getOllamaBaseUrl()}/api/chat`;
+    const base = instanceUrl ?? getOllamaBaseUrl();
+    url = `${base}/api/chat`;
     body = {
       model,
       messages,
@@ -52,9 +72,8 @@ export async function executeLlmNode(
       options: { temperature: temperature ?? 0.7, num_predict: maxTokens ?? 4096 },
     };
   } else if (resolvedProvider === "vllm") {
-    // vLLM — local OpenAI-compatible API (no API key needed)
-    const vllmUrl = process.env.VLLM_URL || "http://vllm:8000";
-    url = `${vllmUrl}/v1/chat/completions`;
+    const base = instanceUrl ?? process.env.VLLM_URL ?? "http://vllm:8000";
+    url = `${base}/v1/chat/completions`;
     body = { model, messages, temperature: temperature ?? 0.7, max_tokens: maxTokens ?? 4096 };
   } else {
     // Cloud providers: OpenAI, Groq, Mistral, Anthropic

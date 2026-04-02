@@ -39,6 +39,7 @@ export interface WorkflowNode {
     // LLM node
     model?: string;
     provider?: string;
+    instanceId?: string;
     temperature?: number;
     maxTokens?: number;
     systemPrompt?: string;

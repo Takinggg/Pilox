@@ -71,6 +71,7 @@ export interface StepData {
   // LLM
   model?: string;
   provider?: string;
+  instanceId?: string;
   temperature?: number;
   maxTokens?: number;
   systemPrompt?: string;

@@ -17,6 +17,12 @@ import type {
 
 // ── Public interface ────────────────────────────────
 
+export interface DeployProgress {
+  percent: number;
+  status: string;
+  instanceId: string;
+}
+
 export interface InferenceSetupState {
   // Core
   mode: WizardMode;
@@ -52,6 +58,9 @@ export interface InferenceSetupState {
   // Instance creation
   instanceStatus: string | null;
   instanceError: string | null;
+
+  // Deploy progress (live download tracking)
+  deployProgress: DeployProgress | null;
 
   // Delete Ollama prompt (shown when switching to vLLM)
   showDeleteOllamaPrompt: boolean;
@@ -243,7 +252,14 @@ export function useInferenceSetup(): UseInferenceSetup {
   // with the selected optimization settings.
   const [instanceStatus, setInstanceStatus] = useState<string | null>(null);
   const [instanceError, setInstanceError] = useState<string | null>(null);
+  const [deployProgress, setDeployProgress] = useState<DeployProgress | null>(null);
   const [showDeleteOllamaPrompt, setShowDeleteOllamaPrompt] = useState(false);
+
+  // Cleanup SSE on unmount
+  const progressAbortRef = useRef<AbortController | null>(null);
+  useEffect(() => {
+    return () => { progressAbortRef.current?.abort(); };
+  }, []);
 
   const dismissDeletePrompt = useCallback(() => setShowDeleteOllamaPrompt(false), []);
 
@@ -290,7 +306,14 @@ export function useInferenceSetup(): UseInferenceSetup {
 
       if (res.ok) {
         const data = await res.json();
-        setInstanceStatus(`Instance created (${data.instance?.status || "starting"}). Container: ${data.instance?.instanceId?.slice(0, 12) || "pending"}`);
+        const instId = data.instance?.id;
+        const instStatus = data.instance?.status || "starting";
+        setInstanceStatus(`Instance created (${instStatus}). Container: ${data.instance?.instanceId?.slice(0, 12) || "pending"}`);
+
+        // Start SSE progress tracking if instance is pulling
+        if (instId && (instStatus === "pulling" || instStatus === "creating")) {
+          startProgressStream(instId);
+        }
 
         // Delete Ollama version if requested
         if (deleteOllama && modelDef?.provider === "ollama") {
@@ -357,6 +380,81 @@ export function useInferenceSetup(): UseInferenceSetup {
     }
   }, []);
 
+  // ── SSE progress stream ──────────────────────────
+  const startProgressStream = useCallback((instanceId: string) => {
+    // Abort any previous stream
+    progressAbortRef.current?.abort();
+    const abort = new AbortController();
+    progressAbortRef.current = abort;
+
+    setDeployProgress({ percent: 0, status: "Starting...", instanceId });
+
+    (async () => {
+      try {
+        const res = await fetch(`/api/system/inference/instances/${instanceId}/progress`, {
+          credentials: "include",
+          signal: abort.signal,
+        });
+        if (!res.ok || !res.body) {
+          setDeployProgress(null);
+          return;
+        }
+
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split("\n");
+          buffer = lines.pop() ?? "";
+
+          for (const line of lines) {
+            if (!line.startsWith("data: ")) continue;
+            try {
+              const evt = JSON.parse(line.slice(6)) as {
+                status?: string;
+                completed?: number;
+                total?: number;
+                error?: string;
+              };
+
+              if (evt.status === "running") {
+                setDeployProgress({ percent: 100, status: "Ready!", instanceId });
+                setInstanceStatus("Instance is running and ready for inference.");
+                setInstanceError(null);
+                // Auto-clear after 4s
+                setTimeout(() => setDeployProgress(null), 4000);
+                return;
+              }
+              if (evt.status === "error") {
+                setDeployProgress(null);
+                setInstanceError(evt.error ?? "Pull failed");
+                setInstanceStatus(null);
+                return;
+              }
+
+              // Calculate percentage
+              const pct = evt.total && evt.total > 0
+                ? Math.round((evt.completed ?? 0) / evt.total * 100)
+                : 0;
+              const statusText = evt.status === "pulling manifest"
+                ? "Pulling manifest..."
+                : pct > 0 ? `${pct}%` : (evt.status ?? "Downloading...");
+              setDeployProgress({ percent: pct, status: statusText, instanceId });
+            } catch { /* malformed event */ }
+          }
+        }
+      } catch (err) {
+        if (abort.signal.aborted) return; // intentional cleanup
+        setDeployProgress(null);
+      }
+    })();
+  }, []);
+
   // ── Derived ───────────────────────────────────────
   const filteredModels = modelSearch
     ? installedModels.filter((m) =>
@@ -378,7 +476,7 @@ export function useInferenceSetup(): UseInferenceSetup {
     selectedBackend, selectedModel, quantization, turboQuant, speculative,
     cpuOffload, contextLen, prefixCaching, vptq, modelSearch,
     installedModels, filteredModels, maxOffloadGB, selectedModelDef,
-    benchmarking, benchmarkResult, instanceStatus, instanceError, showDeleteOllamaPrompt,
+    benchmarking, benchmarkResult, instanceStatus, instanceError, deployProgress, showDeleteOllamaPrompt,
     // Actions
     setMode, setStep, setSelectedBackend, setSelectedModel, setQuantization,
     setTurboQuant, setSpeculative, setCpuOffload, setContextLen,

@@ -144,6 +144,10 @@ export function CreateAgentWizard({
   const [downloadStates, setDownloadStates] = useState<Map<string, { progress: number; status: string; error?: string }>>(new Map());
   const [downloadedModels, setDownloadedModels] = useState<Set<string>>(new Set());
 
+  // Running model instances (from inference setup wizard)
+  interface RunningInstance { name: string; instanceId: string; backend: string; status: string; port?: number; parameterSize?: string; family?: string; }
+  const [runningInstances, setRunningInstances] = useState<RunningInstance[]>([]);
+
   // Step 3: Tools & MCP
   const [mcpTools, setMcpTools] = useState<McpTool[]>([]);
 
@@ -176,17 +180,31 @@ export function CreateAgentWizard({
     }
   }, []);
 
-  // Fetch available (already downloaded) models from Ollama
+  // Fetch available (already downloaded) models from Ollama + running instances
   const fetchDownloadedModels = useCallback(async () => {
     try {
       const res = await fetch("/api/models?limit=100");
       if (res.ok) {
         const data = await res.json();
         const available = new Set<string>();
+        const instances: RunningInstance[] = [];
         for (const m of data.data ?? []) {
           if (m.status === "available") available.add(m.name);
+          // Collect models with running instances
+          if (m.instanceId && (m.instanceStatus === "running" || m.instanceStatus === "pulling")) {
+            instances.push({
+              name: m.name,
+              instanceId: m.instanceId,
+              backend: m.instanceBackend ?? m.provider ?? "ollama",
+              status: m.instanceStatus,
+              port: m.instancePort,
+              parameterSize: m.parameterSize,
+              family: m.family,
+            });
+          }
         }
         setDownloadedModels(available);
+        setRunningInstances(instances);
       }
     } catch (e) {
       console.warn("[pilox] create-agent-wizard: fetch downloaded models failed", e);
@@ -626,6 +644,42 @@ export function CreateAgentWizard({
                             </>
                           )}
                         </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* Running Instances */}
+                {runningInstances.length > 0 && (
+                  <div className="border-b border-border">
+                    <div className="px-3 py-1.5 bg-primary/5">
+                      <span className="text-[10px] font-semibold uppercase tracking-wider text-primary">Running Instances</span>
+                    </div>
+                    {runningInstances.map((inst) => {
+                      const isSelected = selectedModel === inst.name;
+                      return (
+                        <button
+                          key={inst.instanceId}
+                          onClick={() => { setSelectedModel(inst.name); setSelectedProviderId(""); }}
+                          className={`flex w-full items-center gap-3 px-3 py-2.5 text-left hover:bg-[var(--pilox-elevated)] border-b border-border/50 last:border-b-0 ${isSelected ? "bg-primary/5" : ""}`}
+                        >
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-1.5">
+                              <span className={`h-1.5 w-1.5 rounded-full ${inst.status === "running" ? "bg-primary" : "bg-[var(--pilox-yellow)]"}`} />
+                              <span className="text-[13px] font-medium text-foreground truncate">{inst.name}</span>
+                              {isSelected && <CheckCircle2 className="h-3 w-3 text-primary shrink-0" />}
+                            </div>
+                            <div className="flex items-center gap-2 mt-0.5">
+                              <span className="text-[10px] text-muted-foreground uppercase">{inst.backend}</span>
+                              {inst.parameterSize && <span className="text-[10px] text-muted-foreground">{inst.parameterSize}</span>}
+                              {inst.family && <span className="text-[10px] text-muted-foreground">{inst.family}</span>}
+                              {inst.port && <span className="text-[10px] text-muted-foreground/60">:{inst.port}</span>}
+                            </div>
+                          </div>
+                          <span className={`text-[10px] font-medium ${inst.status === "running" ? "text-primary" : "text-[var(--pilox-yellow)]"}`}>
+                            {inst.status === "running" ? "Ready" : "Pulling..."}
+                          </span>
+                        </button>
                       );
                     })}
                   </div>

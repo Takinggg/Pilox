@@ -165,16 +165,19 @@ async function detectGpuViaDockerExec(): Promise<GpuInfo> {
 
     const container = docker.getContainer(ollamaContainer.Id);
 
-    // Exec nvidia-smi inside the Ollama container via dockerode
+    // Exec nvidia-smi inside the Ollama container via dockerode.
+    // Use Tty: true so Docker sends raw output without multiplexed frame
+    // headers that corrupt comma-split parsing.
     const exec = await container.exec({
       Cmd: ["nvidia-smi", "--query-gpu=name,memory.total", "--format=csv,noheader,nounits"],
       AttachStdout: true,
-      AttachStderr: true,
+      AttachStderr: false,
+      Tty: true,
     });
 
-    const stream = await exec.start({ Detach: false, Tty: false });
+    const stream = await exec.start({ Detach: false, Tty: true });
 
-    // Collect stdout
+    // Collect stdout (no demuxing needed with Tty: true)
     const output = await new Promise<string>((resolve, reject) => {
       let data = "";
       const timeout = setTimeout(() => resolve(data), 10_000);
@@ -184,10 +187,12 @@ async function detectGpuViaDockerExec(): Promise<GpuInfo> {
     });
 
     // Parse CSV output: "NVIDIA GeForce RTX 3080, 10240"
-    const cleanOutput = output.replace(/[\x00-\x1F\x7F]/g, " ").trim();
+    // Strip any ANSI escape sequences and control chars (TTY may add carriage returns)
+    const cleanOutput = output.replace(/\x1b\[[0-9;]*m/g, "").replace(/[\x00-\x09\x0b-\x1F\x7F]/g, "").trim();
+    const line = cleanOutput.split("\n")[0]?.trim() ?? "";
 
     // Split by comma — nvidia-smi CSV format is "name, memory_total_mb"
-    const parts = cleanOutput.split(",").map((s) => s.trim());
+    const parts = line.split(",").map((s) => s.trim());
     if (parts.length >= 2) {
       const name = parts[0];
       const vramMB = parseInt(parts[1], 10);
@@ -196,9 +201,9 @@ async function detectGpuViaDockerExec(): Promise<GpuInfo> {
       }
     }
 
-    // Fallback: regex match
-    const nameMatch = cleanOutput.match(/(NVIDIA[^,\n]+|GeForce[^,\n]+)/);
-    const vramMatch = cleanOutput.match(/,\s*(\d{4,6})/); // VRAM after comma
+    // Fallback: extract VRAM with regex (handles unexpected formats)
+    const nameMatch = line.match(/(NVIDIA[^,\n]+|GeForce[^,\n]+)/);
+    const vramMatch = line.match(/(\d{4,6})\s*$/); // VRAM at end of line
     if (nameMatch && vramMatch) {
       return {
         name: nameMatch[1].trim(),
