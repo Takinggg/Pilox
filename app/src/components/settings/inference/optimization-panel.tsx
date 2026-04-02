@@ -6,7 +6,7 @@ import { OPTIMIZATION_CATALOG } from "./types";
 import { Tooltip } from "./tooltip";
 
 interface OptimizationPanelProps {
-  enabledBackends: Backend[];
+  selectedBackend: Backend;
   turboQuant: boolean;
   speculative: boolean;
   prefixCaching: boolean;
@@ -32,7 +32,7 @@ const CONTEXT_OPTIONS = [
 ];
 
 export function OptimizationPanel({
-  enabledBackends,
+  selectedBackend,
   turboQuant,
   speculative,
   prefixCaching,
@@ -47,7 +47,7 @@ export function OptimizationPanel({
   onCpuOffloadChange,
   onContextLenChange,
 }: OptimizationPanelProps) {
-  const hasVllm = enabledBackends.includes("vllm");
+  const hasVllm = selectedBackend === "vllm";
 
   // Map optimization IDs to their current state + setter
   const toggleMap: Record<string, { value: boolean; set: (v: boolean) => void }> = {

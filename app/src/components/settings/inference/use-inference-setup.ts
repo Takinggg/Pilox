@@ -28,7 +28,7 @@ export interface InferenceSetupState {
   estimate: PerformanceEstimate | null;
 
   // Expert fields
-  enabledBackends: Backend[];
+  selectedBackend: Backend;
   selectedModel: string;
   quantization: Quantization;
   turboQuant: boolean;
@@ -48,6 +48,10 @@ export interface InferenceSetupState {
   // Benchmark
   benchmarking: boolean;
   benchmarkResult: BenchmarkResult | null;
+
+  // Instance creation
+  instanceStatus: string | null;
+  instanceError: string | null;
 }
 
 /** Model as returned by GET /api/models */
@@ -76,7 +80,7 @@ export interface BenchmarkResult {
 export interface InferenceSetupActions {
   setMode: (mode: WizardMode) => void;
   setStep: (step: ExpertStep) => void;
-  toggleBackend: (backend: Backend) => void;
+  setSelectedBackend: (backend: Backend) => void;
   setSelectedModel: (id: string) => void;
   setQuantization: (q: Quantization) => void;
   setTurboQuant: (v: boolean) => void;
@@ -108,7 +112,7 @@ export function useInferenceSetup(): UseInferenceSetup {
   const [installedModels, setInstalledModels] = useState<InstalledModel[]>([]);
 
   // ── Expert fields ─────────────────────────────────
-  const [enabledBackends, setEnabledBackends] = useState<Backend[]>(["ollama", "vllm"]);
+  const [selectedBackend, setSelectedBackend] = useState<Backend>("ollama");
   const [selectedModel, setSelectedModel] = useState("");
   const [quantization, setQuantization] = useState<Quantization>("Q4_K_M");
   const [turboQuant, setTurboQuant] = useState(true);
@@ -123,11 +127,11 @@ export function useInferenceSetup(): UseInferenceSetup {
 
   // Stable ref to avoid stale closures in debounced callback
   const stateRef = useRef({
-    mode, selectedModel, enabledBackends, quantization,
+    mode, selectedModel, selectedBackend, quantization,
     turboQuant, speculative, cpuOffload, contextLen, prefixCaching, vptq,
   });
   stateRef.current = {
-    mode, selectedModel, enabledBackends, quantization,
+    mode, selectedModel, selectedBackend, quantization,
     turboQuant, speculative, cpuOffload, contextLen, prefixCaching, vptq,
   };
 
@@ -200,7 +204,7 @@ export function useInferenceSetup(): UseInferenceSetup {
           modelId: s.selectedModel,
           config: s.mode === "expert"
             ? {
-                backend: s.enabledBackends.includes("vllm") ? "vllm" : "ollama",
+                backend: s.selectedBackend,
                 quantization: s.quantization,
                 turboQuant: s.turboQuant,
                 speculativeDecoding: s.speculative,
@@ -228,26 +232,24 @@ export function useInferenceSetup(): UseInferenceSetup {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hardware, mode, selectedModel, quantization, turboQuant, speculative, cpuOffload, contextLen, prefixCaching, vptq, fetchEstimate]);
 
-  // ── Backend toggle ────────────────────────────────
-  const toggleBackend = useCallback((backend: Backend) => {
-    setEnabledBackends((prev) => {
-      if (prev.includes(backend)) {
-        return prev.length > 1 ? prev.filter((b) => b !== backend) : prev;
-      }
-      return [...prev, backend];
-    });
-  }, []);
+  // (selectedBackend uses the setter directly — no callback needed)
 
   // ── Apply configuration ───────────────────────────
   // Creates a real isolated inference instance (Docker container / Firecracker VM)
   // with the selected optimization settings.
+  const [instanceStatus, setInstanceStatus] = useState<string | null>(null);
+  const [instanceError, setInstanceError] = useState<string | null>(null);
+
   const applyConfig = useCallback(async (): Promise<boolean> => {
-    if (!config || !selectedModel) return false;
+    if (!selectedModel) return false;
+    const s = stateRef.current;
     setApplying(true);
+    setInstanceStatus("Creating instance...");
+    setInstanceError(null);
     try {
       const modelDef = installedModels.find((m) => m.name === selectedModel);
       const paramB = modelDef ? parseFloat(modelDef.parameterSize) || 0 : 0;
-      const needsGpu = paramB > 13 || config.backend === "vllm";
+      const needsGpu = paramB > 13 || s.selectedBackend === "vllm";
 
       const res = await fetch("/api/system/inference/instances", {
         method: "POST",
@@ -256,27 +258,39 @@ export function useInferenceSetup(): UseInferenceSetup {
         body: JSON.stringify({
           modelName: selectedModel,
           displayName: modelDef?.name || selectedModel,
-          backend: config.backend,
-          quantization: config.quantization,
-          turboQuant: config.turboQuant,
-          speculativeDecoding: config.speculativeDecoding,
-          speculativeModel: config.speculativeModel,
-          cpuOffloadGB: config.cpuOffloadGB,
-          maxContextLen: config.maxContextLen,
-          prefixCaching: config.prefixCaching,
-          vptq: config.vptq,
+          backend: s.selectedBackend,
+          quantization: s.quantization,
+          turboQuant: s.turboQuant,
+          speculativeDecoding: s.speculative,
+          speculativeModel: s.speculative ? "Qwen/Qwen3-0.6B" : undefined,
+          cpuOffloadGB: s.cpuOffload,
+          maxContextLen: s.contextLen,
+          prefixCaching: s.prefixCaching,
+          vptq: s.vptq,
           gpuEnabled: needsGpu,
           parameterSize: modelDef?.parameterSize,
           family: modelDef?.family,
         }),
       });
-      return res.ok;
-    } catch {
+
+      if (res.ok) {
+        const data = await res.json();
+        setInstanceStatus(`Instance created (${data.instance?.status || "starting"}). Container: ${data.instance?.instanceId?.slice(0, 12) || "pending"}`);
+        return true;
+      } else {
+        const err = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
+        setInstanceError(err.error || "Failed to create instance");
+        setInstanceStatus(null);
+        return false;
+      }
+    } catch (err) {
+      setInstanceError(err instanceof Error ? err.message : "Network error");
+      setInstanceStatus(null);
       return false;
     } finally {
       setApplying(false);
     }
-  }, [config, selectedModel, installedModels]);
+  }, [selectedModel, installedModels]);
 
   // ── Benchmark ─────────────────────────────────────
   const runBenchmark = useCallback(async () => {
@@ -331,12 +345,12 @@ export function useInferenceSetup(): UseInferenceSetup {
   return {
     // State
     mode, step, loading, applying, hardware, config, estimate,
-    enabledBackends, selectedModel, quantization, turboQuant, speculative,
+    selectedBackend, selectedModel, quantization, turboQuant, speculative,
     cpuOffload, contextLen, prefixCaching, vptq, modelSearch,
     installedModels, filteredModels, maxOffloadGB, selectedModelDef,
-    benchmarking, benchmarkResult,
+    benchmarking, benchmarkResult, instanceStatus, instanceError,
     // Actions
-    setMode, setStep, toggleBackend, setSelectedModel, setQuantization,
+    setMode, setStep, setSelectedBackend, setSelectedModel, setQuantization,
     setTurboQuant, setSpeculative, setCpuOffload, setContextLen,
     setPrefixCaching, setVptq, setModelSearch, applyConfig, runBenchmark,
   };

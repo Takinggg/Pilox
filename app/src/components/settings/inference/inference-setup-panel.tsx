@@ -73,8 +73,8 @@ export function InferenceSetupPanel() {
         <ExpertModeContent
           step={s.step}
           onStepChange={s.setStep}
-          enabledBackends={s.enabledBackends}
-          onToggleBackend={s.toggleBackend}
+          selectedBackend={s.selectedBackend}
+          onSelectBackend={s.setSelectedBackend}
           models={s.filteredModels}
           selectedModel={s.selectedModel}
           selectedModelDef={s.selectedModelDef}
@@ -111,28 +111,36 @@ export function InferenceSetupPanel() {
         />
       )}
 
+      {/* Instance status */}
+      {s.instanceStatus && (
+        <div className="flex items-center gap-2 rounded-lg bg-pilox-blue/10 px-4 py-3 text-sm text-pilox-blue">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          {s.instanceStatus}
+        </div>
+      )}
+      {s.instanceError && (
+        <div className="flex items-center gap-2 rounded-lg bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          {s.instanceError}
+        </div>
+      )}
+
       {/* Apply button */}
       <div className="flex items-center gap-3">
         <button
           onClick={async () => {
             const ok = await s.applyConfig();
             if (ok) {
-              toast.success("Inference configuration applied.");
+              toast.success("Instance created. Container is starting with your settings.");
             } else {
-              toast.error("Failed to apply configuration. Check server logs.");
+              toast.error("Failed to create instance. Check the error above.");
             }
           }}
           disabled={!s.estimate?.fits || s.applying}
           className="flex h-10 items-center gap-2 rounded-lg bg-primary px-6 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
         >
           {s.applying && <Loader2 className="h-4 w-4 animate-spin" />}
-          {s.mode === "auto" ? "Apply & Continue" : "Apply Configuration"}
+          {s.applying ? "Creating instance..." : s.mode === "auto" ? "Deploy Instance" : "Deploy Instance"}
         </button>
-        {s.applying && (
-          <span className="text-xs text-muted-foreground">
-            Switching backend...
-          </span>
-        )}
       </div>
     </div>
   );
@@ -287,8 +295,8 @@ function Row({ label, value }: { label: string; value: string }) {
 function ExpertModeContent({
   step,
   onStepChange,
-  enabledBackends,
-  onToggleBackend,
+  selectedBackend,
+  onSelectBackend,
   models,
   selectedModel,
   selectedModelDef,
@@ -313,8 +321,8 @@ function ExpertModeContent({
 }: {
   step: ExpertStep;
   onStepChange: (s: ExpertStep) => void;
-  enabledBackends: ReturnType<typeof useInferenceSetup>["enabledBackends"];
-  onToggleBackend: ReturnType<typeof useInferenceSetup>["toggleBackend"];
+  selectedBackend: ReturnType<typeof useInferenceSetup>["selectedBackend"];
+  onSelectBackend: ReturnType<typeof useInferenceSetup>["setSelectedBackend"];
   models: ReturnType<typeof useInferenceSetup>["filteredModels"];
   selectedModel: string;
   selectedModelDef: ReturnType<typeof useInferenceSetup>["selectedModelDef"] | undefined;
@@ -351,7 +359,7 @@ function ExpertModeContent({
 
       {/* Step content */}
       {step === "backends" && (
-        <BackendSelector enabled={enabledBackends} onToggle={onToggleBackend} />
+        <BackendSelector selected={selectedBackend} onSelect={onSelectBackend} />
       )}
 
       {step === "model" && (
@@ -405,7 +413,7 @@ function ExpertModeContent({
 
       {step === "optimizations" && (
         <OptimizationPanel
-          enabledBackends={enabledBackends}
+          selectedBackend={selectedBackend}
           turboQuant={turboQuant}
           speculative={speculative}
           prefixCaching={prefixCaching}

@@ -7,11 +7,12 @@ import { BACKEND_CATALOG } from "./types";
 import { Tooltip } from "./tooltip";
 
 interface BackendSelectorProps {
-  enabled: Backend[];
-  onToggle: (backend: Backend) => void;
+  /** Single selected backend */
+  selected: Backend;
+  onSelect: (backend: Backend) => void;
 }
 
-export function BackendSelector({ enabled, onToggle }: BackendSelectorProps) {
+export function BackendSelector({ selected, onSelect }: BackendSelectorProps) {
   return (
     <div className="flex flex-col gap-2">
       <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
@@ -19,12 +20,12 @@ export function BackendSelector({ enabled, onToggle }: BackendSelectorProps) {
       </label>
       <div className="grid gap-3 sm:grid-cols-2">
         {BACKEND_CATALOG.map((b) => {
-          const active = enabled.includes(b.id);
+          const active = selected === b.id;
           return (
             <button
               key={b.id}
               type="button"
-              onClick={() => onToggle(b.id)}
+              onClick={() => onSelect(b.id)}
               className={`group relative flex flex-col gap-1.5 rounded-xl border p-4 text-left transition-colors ${
                 active
                   ? "border-primary bg-primary/5"
