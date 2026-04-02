@@ -125,6 +125,54 @@ export const agents = pgTable("agents", {
   index("agents_llm_provider_id_idx").on(t.llmProviderId),
 ]);
 
+// ── Model Instances (per-model inference VMs/containers) ──
+export const modelInstanceBackendEnum = pgEnum("model_instance_backend", ["ollama", "vllm"]);
+export const modelInstanceStatusEnum = pgEnum("model_instance_status", ["creating", "pulling", "running", "stopped", "error"]);
+
+export const modelInstances = pgTable("model_instances", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  /** Model name as known by the backend (e.g. "deepseek-r1:70b", "hugging-quants/Meta-Llama-3.3-70B-Instruct-AWQ-INT4") */
+  modelName: varchar("model_name", { length: 512 }).notNull(),
+  /** Display name for the UI */
+  displayName: varchar("display_name", { length: 255 }).notNull(),
+  /** Inference backend engine */
+  backend: modelInstanceBackendEnum("backend").notNull(),
+  /** Hypervisor running this instance */
+  hypervisor: hypervisorTypeEnum("hypervisor").notNull().default("docker"),
+  /** VM or container ID from the hypervisor */
+  instanceId: varchar("instance_id", { length: 128 }),
+  /** IP address of the running instance */
+  instanceIp: varchar("instance_ip", { length: 45 }),
+  /** Port the inference engine listens on */
+  port: integer("port").default(11434),
+  /** Current status */
+  status: modelInstanceStatusEnum("status").notNull().default("creating"),
+  // ── Optimization settings ──
+  quantization: varchar("quantization", { length: 20 }).notNull().default("Q4_K_M"),
+  turboQuant: boolean("turbo_quant").default(false),
+  speculativeDecoding: boolean("speculative_decoding").default(false),
+  speculativeModel: varchar("speculative_model", { length: 255 }),
+  cpuOffloadGB: integer("cpu_offload_gb").default(0),
+  maxContextLen: integer("max_context_len").default(8192),
+  prefixCaching: boolean("prefix_caching").default(false),
+  vptq: boolean("vptq").default(false),
+  // ── Resource limits ──
+  gpuEnabled: boolean("gpu_enabled").default(false),
+  cpuLimit: varchar("cpu_limit", { length: 20 }).default("4.0"),
+  memoryLimitMB: integer("memory_limit_mb").default(8192),
+  // ── Metadata ──
+  parameterSize: varchar("parameter_size", { length: 20 }),
+  family: varchar("family", { length: 50 }),
+  error: text("error"),
+  createdBy: uuid("created_by").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (t) => [
+  index("model_instances_model_name_idx").on(t.modelName),
+  index("model_instances_status_idx").on(t.status),
+  index("model_instances_backend_idx").on(t.backend),
+]);
+
 // ── Agent Groups ───────────────────────────────────────
 export const agentGroups = pgTable("agent_groups", {
   id: uuid("id").primaryKey().defaultRandom(),

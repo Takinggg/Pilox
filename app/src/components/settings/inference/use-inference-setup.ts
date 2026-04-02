@@ -239,15 +239,36 @@ export function useInferenceSetup(): UseInferenceSetup {
   }, []);
 
   // ── Apply configuration ───────────────────────────
+  // Creates a real isolated inference instance (Docker container / Firecracker VM)
+  // with the selected optimization settings.
   const applyConfig = useCallback(async (): Promise<boolean> => {
-    if (!config) return false;
+    if (!config || !selectedModel) return false;
     setApplying(true);
     try {
-      const res = await fetch("/api/system/inference", {
+      const modelDef = installedModels.find((m) => m.name === selectedModel);
+      const paramB = modelDef ? parseFloat(modelDef.parameterSize) || 0 : 0;
+      const needsGpu = paramB > 13 || config.backend === "vllm";
+
+      const res = await fetch("/api/system/inference/instances", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ backend: config.backend }),
+        body: JSON.stringify({
+          modelName: selectedModel,
+          displayName: modelDef?.name || selectedModel,
+          backend: config.backend,
+          quantization: config.quantization,
+          turboQuant: config.turboQuant,
+          speculativeDecoding: config.speculativeDecoding,
+          speculativeModel: config.speculativeModel,
+          cpuOffloadGB: config.cpuOffloadGB,
+          maxContextLen: config.maxContextLen,
+          prefixCaching: config.prefixCaching,
+          vptq: config.vptq,
+          gpuEnabled: needsGpu,
+          parameterSize: modelDef?.parameterSize,
+          family: modelDef?.family,
+        }),
       });
       return res.ok;
     } catch {
@@ -255,7 +276,7 @@ export function useInferenceSetup(): UseInferenceSetup {
     } finally {
       setApplying(false);
     }
-  }, [config]);
+  }, [config, selectedModel, installedModels]);
 
   // ── Benchmark ─────────────────────────────────────
   const runBenchmark = useCallback(async () => {
