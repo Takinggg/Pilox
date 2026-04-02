@@ -225,9 +225,10 @@ async function createVllmContainer(
 
   log.info("vLLM model name resolved", { original: config.modelName, resolved: hfModelName });
 
-  // Build vLLM serve command (new vllm CLI: `vllm serve <model> [options]`)
+  // Build vLLM serve command — use --model flag (positional arg removed in vLLM v0.8+)
   const vllmArgs = [
-    "serve", hfModelName,
+    "serve",
+    "--model", hfModelName,
     "--host", "0.0.0.0", "--port", "8000",
     "--max-model-len", String(config.maxContextLen),
     "--gpu-memory-utilization", "0.9",
@@ -240,15 +241,12 @@ async function createVllmContainer(
   if (config.prefixCaching) {
     vllmArgs.push("--enable-prefix-caching");
   }
-  // Speculative decoding — only if explicitly enabled and model supports it.
-  // vLLM v0.6+ uses --speculative-config or --speculative-model depending on version.
-  if (config.speculativeDecoding && config.speculativeModel) {
-    vllmArgs.push("--speculative-model", config.speculativeModel);
-    vllmArgs.push("--num-speculative-tokens", "5");
-  }
   if (config.quantization === "awq" || config.quantization === "gptq") {
     vllmArgs.push("--quantization", config.quantization);
   }
+  // Note: speculative decoding (--speculative-model) removed — not supported
+  // on all models/versions and causes container crash loops. Can be re-enabled
+  // per-model once vLLM stabilizes the flag across releases.
 
   const createOpts: Record<string, unknown> = {
     Image: VLLM_IMAGE,
