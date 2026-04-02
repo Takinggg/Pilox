@@ -30,9 +30,11 @@ export interface BenchmarkResult {
 export async function runInferenceBenchmark(
   modelId: string,
 ): Promise<BenchmarkResult> {
-  const port = process.env.INFERENCE_PORT || "11434";
-  const baseUrl = `http://127.0.0.1:${port}`;
+  // Use OLLAMA_URL / VLLM_URL from env (Docker networking), fallback to localhost
+  const ollamaUrl = process.env.OLLAMA_URL || `http://127.0.0.1:${process.env.INFERENCE_PORT || "11434"}`;
+  const vllmUrl = process.env.VLLM_URL || `http://127.0.0.1:8000`;
   const backend = await getActiveBackend();
+  const baseUrl = backend === "vllm" ? vllmUrl : ollamaUrl;
 
   log.info("Starting benchmark", { backend, model: modelId });
 

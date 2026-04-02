@@ -14,7 +14,6 @@ import type {
   Quantization,
   WizardMode,
 } from "./types";
-import { MODEL_CATALOG } from "./types";
 
 // ── Public interface ────────────────────────────────
 
@@ -41,13 +40,26 @@ export interface InferenceSetupState {
   modelSearch: string;
 
   // Derived
-  filteredModels: ModelOption[];
+  installedModels: InstalledModel[];
+  filteredModels: InstalledModel[];
   maxOffloadGB: number;
-  selectedModelDef: ModelOption | undefined;
+  selectedModelDef: InstalledModel | undefined;
 
   // Benchmark
   benchmarking: boolean;
   benchmarkResult: BenchmarkResult | null;
+}
+
+/** Model as returned by GET /api/models */
+export interface InstalledModel {
+  id: string;
+  name: string;
+  provider: string;
+  parameterSize: string;
+  sizeGB: number;
+  quantizationLevel: string;
+  family: string;
+  status: string;
 }
 
 export interface BenchmarkResult {
@@ -92,9 +104,12 @@ export function useInferenceSetup(): UseInferenceSetup {
   const [config, setConfig] = useState<InferenceConfig | null>(null);
   const [estimate, setEstimate] = useState<PerformanceEstimate | null>(null);
 
+  // ── Installed models ──────────────────────────────
+  const [installedModels, setInstalledModels] = useState<InstalledModel[]>([]);
+
   // ── Expert fields ─────────────────────────────────
   const [enabledBackends, setEnabledBackends] = useState<Backend[]>(["ollama", "vllm"]);
-  const [selectedModel, setSelectedModel] = useState("llama-3.2-3b");
+  const [selectedModel, setSelectedModel] = useState("");
   const [quantization, setQuantization] = useState<Quantization>("Q4_K_M");
   const [turboQuant, setTurboQuant] = useState(true);
   const [speculative, setSpeculative] = useState(false);
@@ -116,6 +131,37 @@ export function useInferenceSetup(): UseInferenceSetup {
     turboQuant, speculative, cpuOffload, contextLen, prefixCaching, vptq,
   };
 
+  // ── Fetch installed models ────────────────────────
+  useEffect(() => {
+    fetch("/api/models?limit=100", { credentials: "include" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((json) => {
+        const data = json?.data ?? json;
+        if (!Array.isArray(data)) return;
+
+        const models: InstalledModel[] = data.map((m: Record<string, unknown>) => {
+          const paramSize = String(m.parameterSize ?? m.size ?? "");
+          return {
+            id: String(m.name ?? m.id ?? ""),
+            name: String(m.name ?? ""),
+            provider: String(m.provider ?? "ollama"),
+            parameterSize: paramSize,
+            sizeGB: parseParamSizeToGB(paramSize),
+            quantizationLevel: String(m.quantizationLevel ?? "Q4_K_M"),
+            family: String(m.family ?? ""),
+            status: String(m.status ?? "available"),
+          };
+        });
+
+        setInstalledModels(models);
+        // Auto-select first model if none selected
+        if (models.length > 0 && !stateRef.current.selectedModel) {
+          setSelectedModel(models[0].name);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
   // ── Initial hardware scan ─────────────────────────
   useEffect(() => {
     fetch("/api/system/hardware", { credentials: "include" })
@@ -125,7 +171,6 @@ export function useInferenceSetup(): UseInferenceSetup {
         setHardware(d.hardware);
         setConfig(d.autoConfig);
         setEstimate(d.estimate);
-        // Sync expert fields from auto-detected config
         const ac = d.autoConfig;
         if (ac) {
           setQuantization(ac.quantization);
@@ -142,10 +187,12 @@ export function useInferenceSetup(): UseInferenceSetup {
   }, []);
 
   // ── Re-estimate on config changes ─────────────────
+  // POST goes to /api/system/hardware (same route, different method)
   const fetchEstimate = useCallback(async () => {
     const s = stateRef.current;
+    if (!s.selectedModel) return;
     try {
-      const res = await fetch("/api/system/hardware/estimate", {
+      const res = await fetch("/api/system/hardware", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -175,7 +222,7 @@ export function useInferenceSetup(): UseInferenceSetup {
 
   // Debounced re-estimate when any config value changes
   useEffect(() => {
-    if (!hardware) return;
+    if (!hardware || !selectedModel) return;
     const id = setTimeout(fetchEstimate, 250);
     return () => clearTimeout(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -227,10 +274,7 @@ export function useInferenceSetup(): UseInferenceSetup {
         setBenchmarkResult({
           backend: "unknown",
           model: stateRef.current.selectedModel,
-          tokensGenerated: 0,
-          durationMs: 0,
-          tokensPerSec: 0,
-          firstTokenMs: 0,
+          tokensGenerated: 0, durationMs: 0, tokensPerSec: 0, firstTokenMs: 0,
           success: false,
           error: `Server returned ${res.status}`,
         });
@@ -239,10 +283,7 @@ export function useInferenceSetup(): UseInferenceSetup {
       setBenchmarkResult({
         backend: "unknown",
         model: stateRef.current.selectedModel,
-        tokensGenerated: 0,
-        durationMs: 0,
-        tokensPerSec: 0,
-        firstTokenMs: 0,
+        tokensGenerated: 0, durationMs: 0, tokensPerSec: 0, firstTokenMs: 0,
         success: false,
         error: err instanceof Error ? err.message : "Benchmark failed",
       });
@@ -253,29 +294,40 @@ export function useInferenceSetup(): UseInferenceSetup {
 
   // ── Derived ───────────────────────────────────────
   const filteredModels = modelSearch
-    ? MODEL_CATALOG.filter((m) =>
-        m.label.toLowerCase().includes(modelSearch.toLowerCase()) ||
-        m.size.toLowerCase().includes(modelSearch.toLowerCase()) ||
-        m.category.includes(modelSearch.toLowerCase()),
+    ? installedModels.filter((m) =>
+        m.name.toLowerCase().includes(modelSearch.toLowerCase()) ||
+        m.family.toLowerCase().includes(modelSearch.toLowerCase()) ||
+        m.parameterSize.toLowerCase().includes(modelSearch.toLowerCase()),
       )
-    : MODEL_CATALOG;
+    : installedModels;
 
   const maxOffloadGB = hardware
     ? Math.max(0, Math.round(hardware.ram.totalMB / 1024 - 8))
     : 0;
 
-  const selectedModelDef = MODEL_CATALOG.find((m) => m.id === selectedModel);
+  const selectedModelDef = installedModels.find((m) => m.name === selectedModel);
 
   return {
     // State
     mode, step, loading, applying, hardware, config, estimate,
     enabledBackends, selectedModel, quantization, turboQuant, speculative,
     cpuOffload, contextLen, prefixCaching, vptq, modelSearch,
-    filteredModels, maxOffloadGB, selectedModelDef,
+    installedModels, filteredModels, maxOffloadGB, selectedModelDef,
     benchmarking, benchmarkResult,
     // Actions
     setMode, setStep, toggleBackend, setSelectedModel, setQuantization,
     setTurboQuant, setSpeculative, setCpuOffload, setContextLen,
     setPrefixCaching, setVptq, setModelSearch, applyConfig, runBenchmark,
   };
+}
+
+// ── Helpers ─────────────────────────────────────────
+
+/** Parse "70.6B" → ~35 GB (Q4 size estimate) */
+function parseParamSizeToGB(paramSize: string): number {
+  const match = paramSize.match(/([\d.]+)\s*B/i);
+  if (!match) return 0;
+  const billions = parseFloat(match[1]);
+  // Q4 ≈ 0.5 bytes per param → GB = billions * 0.5
+  return Math.round(billions * 0.5 * 10) / 10;
 }

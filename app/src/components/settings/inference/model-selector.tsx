@@ -2,11 +2,10 @@
 "use client";
 
 import { Search } from "lucide-react";
-import type { ModelOption } from "./types";
-import { categoryBadgeColor, quantBitsLabel } from "./types";
+import type { InstalledModel } from "./use-inference-setup";
 
 interface ModelSelectorProps {
-  models: ModelOption[];
+  models: InstalledModel[];
   selected: string;
   search: string;
   onSelect: (id: string) => void;
@@ -23,7 +22,7 @@ export function ModelSelector({
   return (
     <div className="flex flex-col gap-2">
       <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-        Default Model
+        Installed Models
       </label>
 
       {/* Search */}
@@ -33,7 +32,7 @@ export function ModelSelector({
           type="text"
           value={search}
           onChange={(e) => onSearchChange(e.target.value)}
-          placeholder="Search models..."
+          placeholder="Search installed models..."
           className="h-9 w-full rounded-lg border border-border bg-[var(--pilox-surface-lowest)] pl-9 pr-3 text-sm text-foreground outline-none placeholder:text-muted-foreground/50 focus:border-primary"
         />
       </div>
@@ -42,16 +41,16 @@ export function ModelSelector({
       <div className="max-h-[280px] overflow-y-auto rounded-lg border border-border">
         {models.length === 0 && (
           <p className="p-4 text-center text-xs text-muted-foreground">
-            No models match your search.
+            {search ? "No models match your search." : "No models installed. Pull a model from the Models page."}
           </p>
         )}
         {models.map((m) => {
-          const active = m.id === selected;
+          const active = m.name === selected;
           return (
             <button
-              key={m.id}
+              key={m.name}
               type="button"
-              onClick={() => onSelect(m.id)}
+              onClick={() => onSelect(m.name)}
               className={`flex w-full items-center gap-3 border-b border-border px-4 py-2.5 text-left text-sm transition-colors last:border-b-0 ${
                 active
                   ? "bg-primary/5 text-foreground"
@@ -66,42 +65,32 @@ export function ModelSelector({
               />
 
               {/* Name */}
-              <span className={`flex-1 font-medium ${active ? "text-foreground" : ""}`}>
-                {m.label}
-              </span>
+              <span className="flex-1 font-medium">{m.name}</span>
 
-              {/* Category badge */}
-              <span
-                className={`rounded px-1.5 py-0.5 text-[10px] font-semibold capitalize ${categoryBadgeColor(m.category)}`}
-              >
-                {m.category}
+              {/* Provider badge */}
+              <span className="rounded bg-primary/20 px-1.5 py-0.5 text-[10px] font-semibold text-primary capitalize">
+                {m.provider}
               </span>
 
               {/* Size */}
               <span className="w-14 text-right font-mono text-xs text-muted-foreground">
-                {m.sizeGB} GB
+                {m.parameterSize}
               </span>
 
-              {/* Available quantizations */}
-              <span className="flex w-24 justify-end gap-1">
-                {m.availableQuants.filter((q) => q !== "fp16").map((q) => (
-                  <span
-                    key={q}
-                    className={`rounded px-1 py-0.5 text-[8px] font-semibold ${
-                      q === m.defaultQuant
-                        ? "bg-primary/15 text-primary"
-                        : "bg-muted text-muted-foreground"
-                    }`}
-                  >
-                    {quantBitsLabel(q)}
-                  </span>
-                ))}
+              {/* Quant */}
+              <span className="w-16 text-right text-[10px] text-muted-foreground">
+                {m.quantizationLevel}
               </span>
 
-              {/* Backend */}
-              <span className="w-12 text-right text-[10px] text-muted-foreground">
-                {m.defaultBackend}
+              {/* Family */}
+              <span className="w-14 text-right text-[10px] text-muted-foreground capitalize">
+                {m.family}
               </span>
+
+              {/* Status */}
+              {m.status === "available" && (
+                <span className="h-2 w-2 rounded-full bg-pilox-green" title="Active" />
+              )}
             </button>
           );
         })}

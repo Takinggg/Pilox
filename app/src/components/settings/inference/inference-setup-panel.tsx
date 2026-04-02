@@ -317,7 +317,7 @@ function ExpertModeContent({
   onToggleBackend: ReturnType<typeof useInferenceSetup>["toggleBackend"];
   models: ReturnType<typeof useInferenceSetup>["filteredModels"];
   selectedModel: string;
-  selectedModelDef: ReturnType<typeof useInferenceSetup>["selectedModelDef"];
+  selectedModelDef: ReturnType<typeof useInferenceSetup>["selectedModelDef"] | undefined;
   onSelectModel: (id: string) => void;
   modelSearch: string;
   onSearchChange: (v: string) => void;
@@ -337,14 +337,12 @@ function ExpertModeContent({
   onCpuOffloadChange: (v: number) => void;
   onContextLenChange: (v: number) => void;
 }) {
-  // Filter quant options by what the selected model actually supports
-  const modelQuants = selectedModelDef?.availableQuants;
-  const filteredQuants = modelQuants
-    ? QUANT_OPTIONS.filter((q) => modelQuants.includes(q.value))
-    : QUANT_OPTIONS;
+  // Show all quant options (installed models don't carry availableQuants metadata)
+  const filteredQuants = QUANT_OPTIONS;
 
-  // Compute VRAM delta for each quant vs FP16 (for the selected model)
-  const fp16SizeGB = selectedModelDef ? selectedModelDef.paramB * 2 : 0; // rough: paramB * 2 = FP16 GB
+  // Compute VRAM delta for each quant (from parameterSize, e.g. "70.6B" → 70.6)
+  const paramB = selectedModelDef ? parseFloat(selectedModelDef.parameterSize) || 0 : 0;
+  const fp16SizeGB = paramB * 2; // rough: paramB * 2 = FP16 GB
 
   return (
     <>
@@ -396,8 +394,8 @@ function ExpertModeContent({
                 );
               })}
             </div>
-            {modelQuants && !modelQuants.includes(quantization) && (
-              <p className="text-[11px] text-[var(--pilox-yellow)]">
+            {false && (
+              <p className="text-[11px] text-pilox-yellow">
                 Selected quantization not available for this model. Choose one above.
               </p>
             )}
