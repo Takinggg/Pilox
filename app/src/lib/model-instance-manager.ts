@@ -241,12 +241,18 @@ async function createVllmContainer(
   if (config.prefixCaching) {
     vllmArgs.push("--enable-prefix-caching");
   }
-  if (config.quantization === "awq" || config.quantization === "gptq") {
+  // Quantization flags
+  if (config.vptq) {
+    // VPTQ 2-bit — requires vptq quantization method in vLLM
+    vllmArgs.push("--quantization", "vptq");
+  } else if (config.quantization === "awq" || config.quantization === "gptq") {
     vllmArgs.push("--quantization", config.quantization);
   }
-  // Note: speculative decoding (--speculative-model) removed — not supported
-  // on all models/versions and causes container crash loops. Can be re-enabled
-  // per-model once vLLM stabilizes the flag across releases.
+
+  // KV cache quantization (TurboQuant 3-bit → FP8 KV cache in vLLM)
+  if (config.turboQuant) {
+    vllmArgs.push("--kv-cache-dtype", "fp8");
+  }
 
   const createOpts: Record<string, unknown> = {
     Image: VLLM_IMAGE,
