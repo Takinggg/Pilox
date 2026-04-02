@@ -175,24 +175,28 @@ export function optimizeInference(
     const useVptq = canVptq && awqSize > vramGB && vptqSize <= vramGB + availRamGB;
     const effectiveQuant = useVptq ? "vptq" as const : "awq" as const;
     const effectiveFactor = quantFactor(effectiveQuant);
-    const modelSizeGB = fp16GB * effectiveFactor;
+    const weightsGB = fp16GB * effectiveFactor;
 
-    const fitsInVram = modelSizeGB <= vramGB;
-    const offloadGB = fitsInVram ? 0 : Math.ceil(modelSizeGB - vramGB);
+    // Estimate KV cache with TurboQuant enabled (3-bit KV)
+    const contextLen = weightsGB <= vramGB ? 32768 : 8192;
+    const kvCacheGB = estimateKvCacheGB(modelId, contextLen, true);
+    const totalNeededGB = weightsGB + kvCacheGB;
+
+    const fitsInVram = totalNeededGB <= vramGB * 0.9; // leave 10% headroom
+    // CPU offload must cover everything that doesn't fit in VRAM
+    const offloadGB = fitsInVram ? 0 : Math.ceil(totalNeededGB - (vramGB * 0.9));
     const totalAvailable = vramGB + availRamGB;
-    const fits = modelSizeGB <= totalAvailable;
+    const fits = totalNeededGB <= totalAvailable;
 
-    const canSpeculate = (vramGB - Math.min(modelSizeGB, vramGB)) >= 0.6 || offloadGB > 0;
-
+    // Don't enable speculative decoding — it adds memory and crashes on many models
     return {
       backend: "vllm",
       model: modelId,
       quantization: effectiveQuant,
       turboQuant: true,
-      speculativeDecoding: canSpeculate && fp16GB > 16,
-      speculativeModel: canSpeculate ? "Qwen/Qwen3-0.6B" : undefined,
+      speculativeDecoding: false,
       cpuOffloadGB: offloadGB,
-      maxContextLen: fitsInVram ? 32768 : 8192,
+      maxContextLen: contextLen,
       prefixCaching: true,
       vptq: useVptq,
     };
@@ -236,13 +240,13 @@ export function estimatePerformance(
   const totalGB = weightsGB + kvCacheGB + draftModelGB;
 
   // ── VRAM usage ────────────────────────────────────
-  const vramForModel = Math.min(weightsGB, vramGB) * 1024; // MB
-  const kvCacheMB = kvCacheGB * 1024;
-  const draftModelMB = draftModelGB * 1024;
-  const totalVramMB = Math.round(vramForModel + kvCacheMB + draftModelMB);
+  // What stays in VRAM = total needed minus what's offloaded to CPU
+  const offloadGB = config.cpuOffloadGB;
+  const inVramGB = Math.max(0, totalGB - offloadGB);
+  const totalVramMB = Math.round(Math.min(inVramGB, vramGB) * 1024);
 
   // ── RAM usage (offload) ───────────────────────────
-  const ramOffloadMB = Math.round(config.cpuOffloadGB * 1024);
+  const ramOffloadMB = Math.round(offloadGB * 1024);
 
   // ── Disk ──────────────────────────────────────────
   const diskGB = Math.round(weightsGB);
@@ -269,13 +273,17 @@ export function estimatePerformance(
 
   // ── Warnings ──────────────────────────────────────
   const warnings: string[] = [];
-  const fits = (weightsGB <= vramGB + (hw.ram.availableMB / 1024 - 8));
+  const availRamGB = Math.max(0, (hw.ram.availableMB / 1024) - 8);
+  const fits = totalGB <= (vramGB + availRamGB);
 
   if (config.cpuOffloadGB > 0) {
     warnings.push(`${config.cpuOffloadGB}GB offloaded to RAM — inference will be slower than full GPU.`);
   }
-  if (totalVramMB > hw.gpu.vramMB && hasGpu) {
-    warnings.push(`Model exceeds VRAM (${weightsGB.toFixed(1)}GB > ${vramGB.toFixed(1)}GB). CPU offload required.`);
+  if (totalGB > vramGB && hasGpu) {
+    const neededOffload = Math.ceil(totalGB - vramGB * 0.9);
+    if (config.cpuOffloadGB < neededOffload) {
+      warnings.push(`Model needs ~${neededOffload}GB offloaded but only ${config.cpuOffloadGB}GB configured. Increase CPU offload to ${neededOffload}GB.`);
+    }
   }
   if (!hasGpu) {
     warnings.push("No GPU detected — running on CPU only. Inference will be slow.");
