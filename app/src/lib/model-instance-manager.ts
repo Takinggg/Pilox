@@ -225,10 +225,10 @@ async function createVllmContainer(
 
   log.info("vLLM model name resolved", { original: config.modelName, resolved: hfModelName });
 
-  // Build vLLM serve command — use --model flag (positional arg removed in vLLM v0.8+)
+  // Build vLLM args — image entrypoint is ["vllm","serve"], so Cmd is just model + flags.
+  // Model as positional arg (--model flag deprecated in v0.13+).
   const vllmArgs = [
-    "serve",
-    "--model", hfModelName,
+    hfModelName,
     "--host", "0.0.0.0", "--port", "8000",
     "--max-model-len", String(config.maxContextLen),
     "--gpu-memory-utilization", "0.9",
