@@ -3,10 +3,12 @@
 # plus real TurboQuant KV cache compression (not just FP8).
 #
 # Used by model-instance-manager when Aphrodite backend is selected.
-FROM alpindale/aphrodite-openai:latest
+# Pin to v0.6.4 — latest image has broken entrypoint (missing aphrodite binary)
+FROM alpindale/aphrodite-openai:v0.6.4
+
+# VPTQ 2-bit quantization support
+RUN pip install --no-cache-dir vptq
 
 # TurboQuant — 0xSero's Triton kernels (high-perf, vLLM-integrated)
 # 3-bit keys / 2-bit values, paged KV, Triton attention kernels
 RUN pip install --no-cache-dir git+https://github.com/0xSero/turboquant.git
-
-# VPTQ is already native in Aphrodite — no extra pip needed

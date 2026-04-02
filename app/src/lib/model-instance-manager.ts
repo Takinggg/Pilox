@@ -78,7 +78,8 @@ const PILOX_NETWORK = "pilox-network";
 const OLLAMA_IMAGE = process.env.OLLAMA_IMAGE || "ollama/ollama:latest";
 const VLLM_IMAGE = process.env.VLLM_IMAGE || "vllm/vllm-openai:latest";
 const VLLM_VPTQ_IMAGE = process.env.VLLM_VPTQ_IMAGE || "pilox-vllm-vptq:latest";
-const APHRODITE_BASE_IMAGE = "alpindale/aphrodite-openai:latest";
+// latest image is broken (missing aphrodite binary) — pin to v0.6.4
+const APHRODITE_BASE_IMAGE = "alpindale/aphrodite-openai:v0.6.4";
 const APHRODITE_IMAGE = process.env.APHRODITE_IMAGE || "pilox-aphrodite:latest";
 
 // ── Create instance ─────────────────────────────────
