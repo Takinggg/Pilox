@@ -55,7 +55,9 @@
 
 /* ------------------------------------------------------------------ */
 /*  Hive Design Tokens — Light (default)                              */
+/*  MUST be inside @layer base — Tailwind v4 purges bare :root blocks */
 /* ------------------------------------------------------------------ */
+@layer base {
 :root {
   /* Hive core tokens */
   --pilox-primary: #b91c1c;
@@ -129,10 +131,13 @@
 
   --overlay: rgba(0, 0, 0, 0.4);
 }
+} /* end @layer base — light tokens */
 
 /* ------------------------------------------------------------------ */
 /*  Hive Design Tokens — Dark                                         */
+/*  MUST be inside @layer base — Tailwind v4 purges bare .dark blocks */
 /* ------------------------------------------------------------------ */
+@layer base {
 .dark {
   --pilox-primary: #ffb4a8;
   --pilox-primary-alt: #ff5540;
@@ -201,6 +206,7 @@
 
   --overlay: rgba(0, 0, 0, 0.6);
 }
+} /* end @layer base — dark tokens */
 
 @layer base {
   * {
