@@ -86,14 +86,12 @@ export function InferenceSetupPanel() {
           turboQuant={s.turboQuant}
           speculative={s.speculative}
           prefixCaching={s.prefixCaching}
-          vptq={s.vptq}
           cpuOffload={s.cpuOffload}
           maxOffloadGB={s.maxOffloadGB}
           contextLen={s.contextLen}
           onTurboQuantChange={s.setTurboQuant}
           onSpeculativeChange={s.setSpeculative}
           onPrefixCachingChange={s.setPrefixCaching}
-          onVptqChange={s.setVptq}
           onCpuOffloadChange={s.setCpuOffload}
           onContextLenChange={s.setContextLen}
         />
@@ -334,11 +332,7 @@ function AutoModeContent({
             <Row label="Quantization" value={config.quantization.toUpperCase()} />
             <Row
               label="KV cache"
-              value={config.turboQuant ? "TurboQuant 3-bit" : "Standard FP16"}
-            />
-            <Row
-              label="Weight compression"
-              value={config.vptq ? "VPTQ 2-bit" : "Standard"}
+              value={config.turboQuant ? "FP8 KV Cache" : "Standard FP16"}
             />
             <Row
               label="Speculative decoding"
@@ -393,14 +387,12 @@ function ExpertModeContent({
   turboQuant,
   speculative,
   prefixCaching,
-  vptq,
   cpuOffload,
   maxOffloadGB,
   contextLen,
   onTurboQuantChange,
   onSpeculativeChange,
   onPrefixCachingChange,
-  onVptqChange,
   onCpuOffloadChange,
   onContextLenChange,
 }: {
@@ -419,14 +411,12 @@ function ExpertModeContent({
   turboQuant: boolean;
   speculative: boolean;
   prefixCaching: boolean;
-  vptq: boolean;
   cpuOffload: number;
   maxOffloadGB: number;
   contextLen: number;
   onTurboQuantChange: (v: boolean) => void;
   onSpeculativeChange: (v: boolean) => void;
   onPrefixCachingChange: (v: boolean) => void;
-  onVptqChange: (v: boolean) => void;
   onCpuOffloadChange: (v: number) => void;
   onContextLenChange: (v: number) => void;
 }) {
@@ -502,14 +492,12 @@ function ExpertModeContent({
           turboQuant={turboQuant}
           speculative={speculative}
           prefixCaching={prefixCaching}
-          vptq={vptq}
           cpuOffload={cpuOffload}
           maxOffloadGB={maxOffloadGB}
           contextLen={contextLen}
           onTurboQuantChange={onTurboQuantChange}
           onSpeculativeChange={onSpeculativeChange}
           onPrefixCachingChange={onPrefixCachingChange}
-          onVptqChange={onVptqChange}
           onCpuOffloadChange={onCpuOffloadChange}
           onContextLenChange={onContextLenChange}
         />

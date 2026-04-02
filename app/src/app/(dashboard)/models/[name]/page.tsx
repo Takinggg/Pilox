@@ -196,7 +196,7 @@ export default function ModelDetailPage() {
                 <div className="grid gap-2 text-sm text-foreground">
                   <SummaryRow label="Backend" value={s.config.backend.toUpperCase()} />
                   <SummaryRow label="Quantization" value={s.config.quantization.toUpperCase()} />
-                  <SummaryRow label="KV cache" value={s.config.turboQuant ? "TurboQuant 3-bit" : "Standard FP16"} />
+                  <SummaryRow label="KV cache" value={s.config.turboQuant ? "FP8 KV Cache" : "Standard FP16"} />
                   <SummaryRow label="Speculative decoding" value={s.config.speculativeDecoding ? "ON" : "OFF"} />
                   <SummaryRow label="Prefix caching" value={s.config.prefixCaching ? "ON" : "OFF"} />
                   {s.config.cpuOffloadGB > 0 && (
@@ -215,14 +215,12 @@ export default function ModelDetailPage() {
             turboQuant={s.turboQuant}
             speculative={s.speculative}
             prefixCaching={s.prefixCaching}
-            vptq={s.vptq}
             cpuOffload={s.cpuOffload}
             maxOffloadGB={s.maxOffloadGB}
             contextLen={s.contextLen}
             onTurboQuantChange={s.setTurboQuant}
             onSpeculativeChange={s.setSpeculative}
             onPrefixCachingChange={s.setPrefixCaching}
-            onVptqChange={s.setVptq}
             onCpuOffloadChange={s.setCpuOffload}
             onContextLenChange={s.setContextLen}
           />

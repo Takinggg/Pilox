@@ -10,14 +10,12 @@ interface OptimizationPanelProps {
   turboQuant: boolean;
   speculative: boolean;
   prefixCaching: boolean;
-  vptq: boolean;
   cpuOffload: number;
   maxOffloadGB: number;
   contextLen: number;
   onTurboQuantChange: (v: boolean) => void;
   onSpeculativeChange: (v: boolean) => void;
   onPrefixCachingChange: (v: boolean) => void;
-  onVptqChange: (v: boolean) => void;
   onCpuOffloadChange: (v: number) => void;
   onContextLenChange: (v: number) => void;
 }
@@ -36,24 +34,21 @@ export function OptimizationPanel({
   turboQuant,
   speculative,
   prefixCaching,
-  vptq,
   cpuOffload,
   maxOffloadGB,
   contextLen,
   onTurboQuantChange,
   onSpeculativeChange,
   onPrefixCachingChange,
-  onVptqChange,
   onCpuOffloadChange,
   onContextLenChange,
 }: OptimizationPanelProps) {
-  const hasVllm = selectedBackend === "vllm" || selectedBackend === "aphrodite";
+  const hasVllm = selectedBackend === "vllm";
 
   // Map optimization IDs to their current state + setter
   const toggleMap: Record<string, { value: boolean; set: (v: boolean) => void }> = {
     turboQuant: { value: turboQuant, set: onTurboQuantChange },
     speculativeDecoding: { value: speculative, set: onSpeculativeChange },
-    vptq: { value: vptq, set: onVptqChange },
     prefixCaching: { value: prefixCaching, set: onPrefixCachingChange },
   };
 
@@ -67,7 +62,8 @@ export function OptimizationPanel({
       <div className="flex flex-col gap-3">
         {OPTIMIZATION_CATALOG.map((opt) => {
           const { value, set } = toggleMap[opt.id];
-          const disabled = opt.requiresVllm && !hasVllm;
+          const comingSoon = opt.tier === "coming_soon";
+          const disabled = comingSoon || (opt.requiresVllm && !hasVllm);
 
           return (
             <div
@@ -118,7 +114,7 @@ export function OptimizationPanel({
                   )}
                   {disabled && (
                     <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
-                      Requires vLLM or Aphrodite
+                      {comingSoon ? "Coming soon" : "Requires vLLM"}
                     </span>
                   )}
                 </div>
@@ -163,7 +159,7 @@ export function OptimizationPanel({
         <div className="flex flex-col gap-0.5">
           <div className="flex items-center">
             <span className="text-sm font-medium text-foreground">Context Length</span>
-            <Tooltip text="The maximum number of tokens (input + output) in a single conversation turn. Longer contexts require more KV cache memory — at FP16, each 1K tokens costs ~2MB per layer. TurboQuant reduces this by 6x. Choose the shortest context that meets your needs to maximize available VRAM for model weights." />
+            <Tooltip text="The maximum number of tokens (input + output) in a single conversation turn. Longer contexts require more KV cache memory — at FP16, each 1K tokens costs ~2MB per layer. FP8 KV cache reduces this by 2x. Choose the shortest context that meets your needs to maximize available VRAM for model weights." />
           </div>
           <p className="text-xs text-muted-foreground">
             Maximum tokens per conversation. Longer contexts use more VRAM.

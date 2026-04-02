@@ -42,7 +42,6 @@ export interface InferenceSetupState {
   cpuOffload: number;
   contextLen: number;
   prefixCaching: boolean;
-  vptq: boolean;
   modelSearch: string;
 
   // Derived
@@ -104,7 +103,6 @@ export interface InferenceSetupActions {
   setCpuOffload: (v: number) => void;
   setContextLen: (v: number) => void;
   setPrefixCaching: (v: boolean) => void;
-  setVptq: (v: boolean) => void;
   setModelSearch: (v: string) => void;
   applyConfig: (deleteOllama?: boolean) => Promise<boolean>;
   runBenchmark: () => Promise<void>;
@@ -137,7 +135,6 @@ export function useInferenceSetup(options?: { initialModel?: string }): UseInfer
   const [cpuOffload, setCpuOffload] = useState(0);
   const [contextLen, setContextLen] = useState(8192);
   const [prefixCaching, setPrefixCaching] = useState(true);
-  const [vptq, setVptq] = useState(false);
   const [modelSearch, setModelSearch] = useState("");
   const [benchmarking, setBenchmarking] = useState(false);
   const [benchmarkResult, setBenchmarkResult] = useState<BenchmarkResult | null>(null);
@@ -145,11 +142,11 @@ export function useInferenceSetup(options?: { initialModel?: string }): UseInfer
   // Stable ref to avoid stale closures in debounced callback
   const stateRef = useRef({
     mode, selectedModel, selectedBackend, quantization,
-    turboQuant, speculative, cpuOffload, contextLen, prefixCaching, vptq,
+    turboQuant, speculative, cpuOffload, contextLen, prefixCaching,
   });
   stateRef.current = {
     mode, selectedModel, selectedBackend, quantization,
-    turboQuant, speculative, cpuOffload, contextLen, prefixCaching, vptq,
+    turboQuant, speculative, cpuOffload, contextLen, prefixCaching,
   };
 
   // ── Fetch installed models ────────────────────────
@@ -218,7 +215,7 @@ export function useInferenceSetup(options?: { initialModel?: string }): UseInfer
           setCpuOffload(ac.cpuOffloadGB);
           setContextLen(ac.maxContextLen);
           setPrefixCaching(ac.prefixCaching);
-          setVptq(ac.vptq ?? false);
+          // vptq removed from UI — no longer set from autoConfig
         }
       })
       .catch(() => {})
@@ -245,7 +242,7 @@ export function useInferenceSetup(options?: { initialModel?: string }): UseInfer
             cpuOffloadGB: s.cpuOffload,
             maxContextLen: s.contextLen,
             prefixCaching: s.prefixCaching,
-            vptq: s.vptq,
+            vptq: false,
           },
         }),
       });
@@ -263,7 +260,7 @@ export function useInferenceSetup(options?: { initialModel?: string }): UseInfer
     const id = setTimeout(fetchEstimate, 250);
     return () => clearTimeout(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hardware, mode, selectedModel, selectedBackend, quantization, turboQuant, speculative, cpuOffload, contextLen, prefixCaching, vptq, fetchEstimate]);
+  }, [hardware, mode, selectedModel, selectedBackend, quantization, turboQuant, speculative, cpuOffload, contextLen, prefixCaching, fetchEstimate]);
 
   // (selectedBackend uses the setter directly — no callback needed)
 
@@ -333,7 +330,7 @@ export function useInferenceSetup(options?: { initialModel?: string }): UseInfer
           cpuOffloadGB: s.cpuOffload,
           maxContextLen: s.contextLen,
           prefixCaching: s.prefixCaching,
-          vptq: s.vptq,
+          vptq: false,
           gpuEnabled: needsGpu,
           parameterSize: modelDef?.parameterSize,
           family: modelDef?.family,
@@ -522,8 +519,7 @@ export function useInferenceSetup(options?: { initialModel?: string }): UseInfer
       existingInstance.speculativeDecoding !== speculative ||
       existingInstance.cpuOffloadGB !== cpuOffload ||
       existingInstance.maxContextLen !== contextLen ||
-      existingInstance.prefixCaching !== prefixCaching ||
-      existingInstance.vptq !== vptq
+      existingInstance.prefixCaching !== prefixCaching
     );
   })();
 
@@ -531,14 +527,14 @@ export function useInferenceSetup(options?: { initialModel?: string }): UseInfer
     // State
     mode, step, loading, applying, hardware, config, estimate,
     selectedBackend, selectedModel, quantization, turboQuant, speculative,
-    cpuOffload, contextLen, prefixCaching, vptq, modelSearch,
+    cpuOffload, contextLen, prefixCaching, modelSearch,
     installedModels, filteredModels, maxOffloadGB, selectedModelDef,
     benchmarking, benchmarkResult, instanceStatus, instanceError,
     deployProgress, showDeleteOllamaPrompt, existingInstance, needsRedeploy,
     // Actions
     setMode, setStep, setSelectedBackend, setSelectedModel, setQuantization,
     setTurboQuant, setSpeculative, setCpuOffload, setContextLen,
-    setPrefixCaching, setVptq, setModelSearch, applyConfig, runBenchmark, dismissDeletePrompt,
+    setPrefixCaching, setModelSearch, applyConfig, runBenchmark, dismissDeletePrompt,
   };
 }
 

@@ -131,8 +131,7 @@ export function PerformancePreview({
         <div className="flex flex-wrap gap-2">
           <Tag color="primary">{config.backend.toUpperCase()}</Tag>
           <Tag color="blue">{config.quantization.toUpperCase()}</Tag>
-          {config.turboQuant && <Tag color="purple">TurboQuant 3-bit KV</Tag>}
-          {config.vptq && <Tag color="purple">VPTQ 2-bit Weights</Tag>}
+          {config.turboQuant && <Tag color="purple">FP8 KV Cache</Tag>}
           {config.speculativeDecoding && <Tag color="green">Speculative</Tag>}
           {config.prefixCaching && <Tag color="blue">Prefix Cache</Tag>}
           {config.cpuOffloadGB > 0 && (

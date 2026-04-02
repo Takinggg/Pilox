@@ -19,14 +19,13 @@ export interface HardwareProfile {
 
 // ── Inference config ────────────────────────────────
 
-export type Backend = "ollama" | "vllm" | "aphrodite" | "localai" | "airllm";
-export type Quantization = "Q4_K_M" | "awq" | "gptq" | "fp16" | "vptq";
+export type Backend = "ollama" | "vllm" | "localai" | "airllm";
+export type Quantization = "Q4_K_M" | "awq" | "gptq" | "fp16";
 
 /** Which quantization formats each backend supports */
 export const BACKEND_QUANTS: Record<Backend, Quantization[]> = {
   ollama: ["Q4_K_M", "fp16"],
   vllm: ["awq", "gptq", "fp16"],
-  aphrodite: ["awq", "gptq", "vptq", "fp16"],
   localai: ["Q4_K_M", "fp16"],
   airllm: ["fp16"],
 };
@@ -41,7 +40,6 @@ export interface InferenceConfig {
   cpuOffloadGB: number;
   maxContextLen: number;
   prefixCaching: boolean;
-  vptq: boolean;
 }
 
 export interface MemoryBreakdown {
@@ -103,20 +101,11 @@ export const BACKEND_CATALOG: BackendOption[] = [
   {
     id: "vllm",
     label: "vLLM",
-    description: "Advanced: AWQ quantization, TurboQuant KV, speculative decoding.",
+    description: "Advanced: AWQ quantization, FP8 KV cache, prefix caching.",
     bestFor: "Big models, high throughput (>13B)",
     recommended: "recommended for >13B",
     tier: "stable",
     tooltip: "vLLM is a high-throughput serving engine using PagedAttention for efficient KV cache management. Supports continuous batching, tensor parallelism, AWQ/GPTQ quantization, and speculative decoding for maximum inference speed.",
-  },
-  {
-    id: "aphrodite",
-    label: "Aphrodite",
-    description: "VPTQ 2-bit, AWQ, GPTQ, BitsAndBytes — widest quantization support.",
-    bestFor: "VPTQ 2-bit compression, large models on limited VRAM",
-    recommended: "required for VPTQ",
-    tier: "stable",
-    tooltip: "Aphrodite Engine is a vLLM fork with native VPTQ support. It's the only engine that can serve VPTQ 2-bit quantized models, cutting memory usage in half vs AWQ 4-bit. OpenAI-compatible API, same PagedAttention architecture as vLLM.",
   },
   {
     id: "localai",
@@ -155,32 +144,33 @@ export const MODEL_CATALOG: ModelOption[] = [
   { id: "llama-3.2-3b", label: "Llama 3.2 3B", size: "3B", sizeGB: 1.7, paramB: 3, category: "chat", defaultBackend: "ollama", defaultQuant: "Q4_K_M", availableQuants: ["Q4_K_M", "fp16"] },
   { id: "llama-3.1-8b", label: "Llama 3.1 8B", size: "8B", sizeGB: 4.5, paramB: 8, category: "chat", defaultBackend: "ollama", defaultQuant: "Q4_K_M", availableQuants: ["Q4_K_M", "awq", "gptq", "fp16"] },
   { id: "deepseek-coder-6.7b", label: "DeepSeek Coder 6.7B", size: "6.7B", sizeGB: 3.8, paramB: 6.7, category: "code", defaultBackend: "ollama", defaultQuant: "Q4_K_M", availableQuants: ["Q4_K_M", "fp16"] },
-  { id: "qwen-2.5-14b", label: "Qwen 2.5 14B", size: "14B", sizeGB: 8, paramB: 14, category: "chat", defaultBackend: "vllm", defaultQuant: "awq", availableQuants: ["Q4_K_M", "awq", "gptq", "vptq", "fp16"] },
-  { id: "qwen-2.5-32b", label: "Qwen 2.5 32B", size: "32B", sizeGB: 18, paramB: 32, category: "chat", defaultBackend: "vllm", defaultQuant: "awq", availableQuants: ["awq", "gptq", "vptq", "fp16"] },
-  { id: "codellama-34b", label: "Code Llama 34B", size: "34B", sizeGB: 19, paramB: 34, category: "code", defaultBackend: "vllm", defaultQuant: "awq", availableQuants: ["awq", "gptq", "vptq", "fp16"] },
-  { id: "llama-3.3-70b", label: "Llama 3.3 70B", size: "70B", sizeGB: 35, paramB: 70, category: "chat", defaultBackend: "vllm", defaultQuant: "awq", availableQuants: ["awq", "gptq", "vptq", "fp16"] },
-  { id: "qwen-2.5-72b", label: "Qwen 2.5 72B", size: "72B", sizeGB: 36, paramB: 72, category: "chat", defaultBackend: "vllm", defaultQuant: "awq", availableQuants: ["awq", "gptq", "vptq", "fp16"] },
+  { id: "qwen-2.5-14b", label: "Qwen 2.5 14B", size: "14B", sizeGB: 8, paramB: 14, category: "chat", defaultBackend: "vllm", defaultQuant: "awq", availableQuants: ["Q4_K_M", "awq", "gptq", "fp16"] },
+  { id: "qwen-2.5-32b", label: "Qwen 2.5 32B", size: "32B", sizeGB: 18, paramB: 32, category: "chat", defaultBackend: "vllm", defaultQuant: "awq", availableQuants: ["awq", "gptq", "fp16"] },
+  { id: "codellama-34b", label: "Code Llama 34B", size: "34B", sizeGB: 19, paramB: 34, category: "code", defaultBackend: "vllm", defaultQuant: "awq", availableQuants: ["awq", "gptq", "fp16"] },
+  { id: "llama-3.3-70b", label: "Llama 3.3 70B", size: "70B", sizeGB: 35, paramB: 70, category: "chat", defaultBackend: "vllm", defaultQuant: "awq", availableQuants: ["awq", "gptq", "fp16"] },
+  { id: "qwen-2.5-72b", label: "Qwen 2.5 72B", size: "72B", sizeGB: 36, paramB: 72, category: "chat", defaultBackend: "vllm", defaultQuant: "awq", availableQuants: ["awq", "gptq", "fp16"] },
 ];
 
 // ── Optimization definitions ────────────────────────
 
 export interface OptimizationDef {
-  id: "turboQuant" | "speculativeDecoding" | "prefixCaching" | "vptq";
+  id: "turboQuant" | "speculativeDecoding" | "prefixCaching";
   label: string;
   description: string;
   impact: string;
   cost?: string;
   tooltip: string;
   requiresVllm: boolean;
+  tier?: "stable" | "coming_soon";
 }
 
 export const OPTIMIZATION_CATALOG: OptimizationDef[] = [
   {
     id: "turboQuant",
-    label: "TurboQuant (KV Cache 3-bit)",
-    description: "Compresses the key-value cache from 16-bit to 3-bit during inference.",
-    impact: "128K context uses 3GB instead of 18GB",
-    tooltip: "During autoregressive decoding, the KV cache stores past key/value tensors for attention. At FP16, a 70B model with 128K context needs ~18GB of KV cache alone. TurboQuant quantizes these to 3-bit with negligible quality loss, reducing KV cache memory by 6x. This is separate from weight quantization — TurboQuant compresses the runtime cache, not the stored model.",
+    label: "FP8 KV Cache",
+    description: "Compresses the key-value cache from 16-bit to 8-bit FP8 during inference.",
+    impact: "Reduces KV cache memory by 2x",
+    tooltip: "During autoregressive decoding, the KV cache stores past key/value tensors for attention. FP8 KV cache quantizes these from FP16 to FP8 with negligible quality loss, reducing KV cache memory by 2x. This is separate from weight quantization — it compresses the runtime cache, not the stored model.",
     requiresVllm: true,
   },
   {
@@ -191,15 +181,7 @@ export const OPTIMIZATION_CATALOG: OptimizationDef[] = [
     cost: "+0.6GB VRAM for draft model (Qwen3-0.6B)",
     tooltip: "Instead of generating one token at a time (each requiring a full forward pass of the 70B model), a small 0.6B draft model proposes 5 candidate tokens in ~5ms. The large model then verifies all 5 in one parallel pass (~100ms), accepting 3-4 on average. Net result: same quality, 2-3x higher throughput. The draft model adds ~0.6GB VRAM overhead.",
     requiresVllm: true,
-  },
-  {
-    id: "vptq",
-    label: "VPTQ (2-bit Weights)",
-    description: "Vector Post-Training Quantization. Compresses model weights from 4-bit to 2-bit with minimal quality loss.",
-    impact: "35GB model (AWQ) → ~18GB (VPTQ 2-bit)",
-    cost: "Slight quality loss on complex reasoning tasks",
-    tooltip: "VPTQ (Microsoft Research) uses vector quantization to encode weight matrices at 2 bits per parameter — roughly half the memory of AWQ/GPTQ 4-bit. A 70B model goes from ~35GB (AWQ) to ~18GB (VPTQ). Quality degradation is measurable on complex math/reasoning but negligible for chat and code generation. VPTQ models need dedicated checkpoints (not a runtime toggle on existing 4-bit weights).",
-    requiresVllm: true,
+    tier: "coming_soon",
   },
   {
     id: "prefixCaching",
@@ -225,7 +207,6 @@ export const QUANT_OPTIONS: QuantOption[] = [
   { value: "Q4_K_M", label: "Q4_K_M (Ollama)", bits: 4, tooltip: "GGUF 4-bit quantization optimized for llama.cpp/Ollama. Good balance of quality and speed. Uses mixed-precision: important layers keep higher precision." },
   { value: "awq", label: "AWQ 4-bit (vLLM)", bits: 4, tooltip: "Activation-aware Weight Quantization. Identifies the 1% of weights most critical to output quality and preserves them at higher precision. Slightly better quality than GPTQ at the same bit-width." },
   { value: "gptq", label: "GPTQ 4-bit (vLLM)", bits: 4, tooltip: "Post-training quantization using Hessian-based error correction. Very fast inference on GPU. Comparable quality to AWQ. Some models only have GPTQ checkpoints available." },
-  { value: "vptq", label: "VPTQ 2-bit (vLLM)", bits: 2, tooltip: "Vector Post-Training Quantization (Microsoft). 2-bit weights using vector codebooks. Roughly halves memory vs 4-bit. Best for >13B models on limited VRAM. Requires VPTQ-specific checkpoints." },
 ];
 
 // ── Helpers ─────────────────────────────────────────
