@@ -172,45 +172,125 @@ export async function createModelInstance(config: ModelInstanceConfig): Promise<
 
 // ── Ollama → HuggingFace model name mapping for vLLM ──
 
-/** Common Ollama names → HuggingFace IDs. vLLM needs HF IDs, not Ollama tags. */
-const OLLAMA_TO_HF: Record<string, string> = {
-  "deepseek-r1:70b": "deepseek-ai/DeepSeek-R1-Distill-Llama-70B",
-  "deepseek-r1:32b": "deepseek-ai/DeepSeek-R1-Distill-Qwen-32B",
-  "deepseek-r1:14b": "deepseek-ai/DeepSeek-R1-Distill-Qwen-14B",
-  "deepseek-r1:7b": "deepseek-ai/DeepSeek-R1-Distill-Qwen-7B",
-  "deepseek-r1:8b-llama": "deepseek-ai/DeepSeek-R1-Distill-Llama-8B",
-  "deepseek-r1:671b": "deepseek-ai/DeepSeek-R1",
-  "llama3.3": "meta-llama/Llama-3.3-70B-Instruct",
-  "llama3.1:8b": "meta-llama/Llama-3.1-8B-Instruct",
-  "llama3.1:70b": "meta-llama/Llama-3.1-70B-Instruct",
-  "llama3.1:405b": "meta-llama/Llama-3.1-405B-Instruct",
-  "llama3.2:3b": "meta-llama/Llama-3.2-3B-Instruct",
-  "llama3.2:1b": "meta-llama/Llama-3.2-1B-Instruct",
-  "qwen3:8b": "Qwen/Qwen3-8B",
-  "qwen3:4b": "Qwen/Qwen3-4B",
-  "qwen3:32b": "Qwen/Qwen3-32B",
-  "mistral:7b": "mistralai/Mistral-7B-Instruct-v0.3",
-  "mixtral:8x7b": "mistralai/Mixtral-8x7B-Instruct-v0.1",
-  "gemma2:9b": "google/gemma-2-9b-it",
-  "gemma2:27b": "google/gemma-2-27b-it",
-  "phi3:14b": "microsoft/Phi-3-medium-128k-instruct",
-  "codellama:34b": "codellama/CodeLlama-34b-Instruct-hf",
-  "codellama:7b": "codellama/CodeLlama-7b-Instruct-hf",
+/**
+ * Model registry — maps Ollama names to HuggingFace checkpoints per quantization.
+ * vLLM can't quantize on-the-fly; it needs pre-quantized checkpoints.
+ * "fp16" = base model (BF16/FP16 weights).
+ */
+interface HfCheckpoints {
+  fp16: string;
+  awq?: string;
+  gptq?: string;
+  vptq?: string;
+}
+
+const MODEL_REGISTRY: Record<string, HfCheckpoints> = {
+  "deepseek-r1:70b": {
+    fp16: "deepseek-ai/DeepSeek-R1-Distill-Llama-70B",
+    awq: "hugging-quants/DeepSeek-R1-Distill-Llama-70B-AWQ-INT4",
+    gptq: "ModelCloud/DeepSeek-R1-Distill-Llama-70B-gptq-4bit",
+    vptq: "VPTQ-community/DeepSeek-R1-Distill-Llama-70B-v8-k65536-65536-woft",
+  },
+  "deepseek-r1:32b": {
+    fp16: "deepseek-ai/DeepSeek-R1-Distill-Qwen-32B",
+    awq: "hugging-quants/DeepSeek-R1-Distill-Qwen-32B-AWQ-INT4",
+    gptq: "ModelCloud/DeepSeek-R1-Distill-Qwen-32B-gptq-4bit",
+    vptq: "VPTQ-community/DeepSeek-R1-Distill-Qwen-32B-v8-k65536-65536-woft",
+  },
+  "deepseek-r1:14b": {
+    fp16: "deepseek-ai/DeepSeek-R1-Distill-Qwen-14B",
+    awq: "hugging-quants/DeepSeek-R1-Distill-Qwen-14B-AWQ-INT4",
+    gptq: "ModelCloud/DeepSeek-R1-Distill-Qwen-14B-gptq-4bit",
+    vptq: "VPTQ-community/DeepSeek-R1-Distill-Qwen-14B-v8-k65536-65536-woft",
+  },
+  "deepseek-r1:7b": {
+    fp16: "deepseek-ai/DeepSeek-R1-Distill-Qwen-7B",
+    awq: "hugging-quants/DeepSeek-R1-Distill-Qwen-7B-AWQ-INT4",
+  },
+  "deepseek-r1:8b-llama": {
+    fp16: "deepseek-ai/DeepSeek-R1-Distill-Llama-8B",
+    awq: "hugging-quants/DeepSeek-R1-Distill-Llama-8B-AWQ-INT4",
+  },
+  "deepseek-r1:671b": {
+    fp16: "deepseek-ai/DeepSeek-R1",
+  },
+  "llama3.3": {
+    fp16: "meta-llama/Llama-3.3-70B-Instruct",
+    awq: "hugging-quants/Meta-Llama-3.3-70B-Instruct-AWQ-INT4",
+    gptq: "hugging-quants/Meta-Llama-3.3-70B-Instruct-GPTQ-INT4",
+  },
+  "llama3.1:8b": {
+    fp16: "meta-llama/Llama-3.1-8B-Instruct",
+    awq: "hugging-quants/Meta-Llama-3.1-8B-Instruct-AWQ-INT4",
+  },
+  "llama3.1:70b": {
+    fp16: "meta-llama/Llama-3.1-70B-Instruct",
+    awq: "hugging-quants/Meta-Llama-3.1-70B-Instruct-AWQ-INT4",
+    gptq: "hugging-quants/Meta-Llama-3.1-70B-Instruct-GPTQ-INT4",
+  },
+  "llama3.1:405b": { fp16: "meta-llama/Llama-3.1-405B-Instruct" },
+  "llama3.2:3b": { fp16: "meta-llama/Llama-3.2-3B-Instruct" },
+  "llama3.2:1b": { fp16: "meta-llama/Llama-3.2-1B-Instruct" },
+  "qwen3:8b": { fp16: "Qwen/Qwen3-8B" },
+  "qwen3:4b": { fp16: "Qwen/Qwen3-4B" },
+  "qwen3:32b": { fp16: "Qwen/Qwen3-32B" },
+  "mistral:7b": {
+    fp16: "mistralai/Mistral-7B-Instruct-v0.3",
+    awq: "TheBloke/Mistral-7B-Instruct-v0.2-AWQ",
+  },
+  "mixtral:8x7b": {
+    fp16: "mistralai/Mixtral-8x7B-Instruct-v0.1",
+    awq: "TheBloke/Mixtral-8x7B-Instruct-v0.1-AWQ",
+  },
+  "gemma2:9b": { fp16: "google/gemma-2-9b-it" },
+  "gemma2:27b": { fp16: "google/gemma-2-27b-it" },
+  "phi3:14b": { fp16: "microsoft/Phi-3-medium-128k-instruct" },
+  "codellama:34b": { fp16: "codellama/CodeLlama-34b-Instruct-hf" },
+  "codellama:7b": { fp16: "codellama/CodeLlama-7b-Instruct-hf" },
 };
 
-/** Resolve a model name for vLLM — convert Ollama tags to HF IDs. */
-function resolveVllmModelName(modelName: string): string {
-  // Already a HF ID (contains /)
+/**
+ * Resolve model name + quantization to the correct HuggingFace checkpoint.
+ * vLLM needs pre-quantized checkpoints — it can't quantize on-the-fly.
+ */
+function resolveVllmModelName(modelName: string, quantization?: string): string {
+  // Already a HF ID (contains /) — use as-is
   if (modelName.includes("/")) return modelName;
-  // Lookup in mapping
-  const hf = OLLAMA_TO_HF[modelName] || OLLAMA_TO_HF[modelName.toLowerCase()];
-  if (hf) return hf;
-  // Strip Ollama tag suffix and try again (e.g. "deepseek-r1:70b" → "deepseek-r1")
-  const base = modelName.split(":")[0];
-  if (base !== modelName && OLLAMA_TO_HF[base]) return OLLAMA_TO_HF[base];
-  // Fallback: return as-is (will likely fail but at least logs the real name)
-  log.warn("No HuggingFace ID mapping for model", { modelName });
-  return modelName;
+
+  const entry = MODEL_REGISTRY[modelName] || MODEL_REGISTRY[modelName.toLowerCase()];
+  if (!entry) {
+    // Strip Ollama tag suffix and try again
+    const base = modelName.split(":")[0];
+    const baseEntry = MODEL_REGISTRY[base];
+    if (baseEntry) return pickCheckpoint(baseEntry, quantization, modelName);
+    log.warn("No HuggingFace checkpoint mapping for model", { modelName, quantization });
+    return modelName;
+  }
+
+  return pickCheckpoint(entry, quantization, modelName);
+}
+
+function pickCheckpoint(entry: HfCheckpoints, quantization: string | undefined, modelName: string): string {
+  const q = quantization?.toLowerCase() ?? "fp16";
+
+  // Try exact match first
+  if (q === "vptq" && entry.vptq) return entry.vptq;
+  if (q === "awq" && entry.awq) return entry.awq;
+  if (q === "gptq" && entry.gptq) return entry.gptq;
+  if (q === "fp16") return entry.fp16;
+
+  // Fallback: if requested quant doesn't have a checkpoint, try alternatives
+  if ((q === "vptq" || q === "awq" || q === "gptq") && !entry[q as keyof HfCheckpoints]) {
+    // Prefer AWQ > GPTQ > FP16 as fallback
+    const fallback = entry.awq ?? entry.gptq ?? entry.fp16;
+    const fallbackQuant = entry.awq ? "awq" : entry.gptq ? "gptq" : "fp16";
+    log.warn("Requested quantization checkpoint not available, falling back", {
+      modelName, requested: q, fallback: fallbackQuant,
+    });
+    return fallback;
+  }
+
+  return entry.fp16;
 }
 
 // ── vLLM container ──────────────────────────────────
@@ -221,9 +301,9 @@ async function createVllmContainer(
 ): Promise<{ containerId: string; ip: string; port: number }> {
   const containerName = `pilox-vllm-${sanitizeName(config.modelName)}-${instanceId.slice(0, 8)}`;
   const hostPort = await findFreePort(8001, 8099);
-  const hfModelName = resolveVllmModelName(config.modelName);
+  const hfModelName = resolveVllmModelName(config.modelName, config.quantization);
 
-  log.info("vLLM model name resolved", { original: config.modelName, resolved: hfModelName });
+  log.info("vLLM model name resolved", { original: config.modelName, quantization: config.quantization, resolved: hfModelName });
 
   // Build vLLM args — image entrypoint is ["vllm","serve"], so Cmd is just model + flags.
   // Model as positional arg (--model flag deprecated in v0.13+).
@@ -241,15 +321,20 @@ async function createVllmContainer(
   if (config.prefixCaching) {
     vllmArgs.push("--enable-prefix-caching");
   }
-  // Quantization flags
-  if (config.vptq) {
-    // VPTQ 2-bit — requires vptq quantization method in vLLM
+  // Quantization: pre-quantized checkpoints already have the right weights,
+  // but vLLM still needs the --quantization flag to know how to interpret them.
+  // Only pass the flag if we're actually using a quantized checkpoint (not FP16).
+  const resolvedQuant = config.vptq ? "vptq" : config.quantization;
+  if (resolvedQuant === "vptq" && hfModelName.toLowerCase().includes("vptq")) {
     vllmArgs.push("--quantization", "vptq");
-  } else if (config.quantization === "awq" || config.quantization === "gptq") {
-    vllmArgs.push("--quantization", config.quantization);
+  } else if (resolvedQuant === "awq" && hfModelName.toLowerCase().includes("awq")) {
+    vllmArgs.push("--quantization", "awq");
+  } else if (resolvedQuant === "gptq" && hfModelName.toLowerCase().includes("gptq")) {
+    vllmArgs.push("--quantization", "gptq");
   }
+  // Don't pass --quantization for FP16 or if checkpoint doesn't match quant type
 
-  // KV cache quantization (TurboQuant 3-bit → FP8 KV cache in vLLM)
+  // KV cache quantization (TurboQuant → FP8 KV cache in vLLM)
   if (config.turboQuant) {
     vllmArgs.push("--kv-cache-dtype", "fp8");
   }
