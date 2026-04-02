@@ -1,0 +1,5 @@
+# vLLM + VPTQ 2-bit quantization support
+# Used by model-instance-manager when VPTQ optimization is enabled.
+FROM vllm/vllm-openai:latest
+
+RUN pip install --no-cache-dir vptq

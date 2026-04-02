@@ -77,6 +77,7 @@ export interface ModelInstance {
 const PILOX_NETWORK = "pilox-network";
 const OLLAMA_IMAGE = process.env.OLLAMA_IMAGE || "ollama/ollama:latest";
 const VLLM_IMAGE = process.env.VLLM_IMAGE || "vllm/vllm-openai:latest";
+const VLLM_VPTQ_IMAGE = process.env.VLLM_VPTQ_IMAGE || "pilox-vllm-vptq:latest";
 
 // ── Create instance ─────────────────────────────────
 
@@ -362,6 +363,61 @@ function pickCheckpoint(entry: HfCheckpoints, quantization: string | undefined, 
   return entry.fp16;
 }
 
+// ── VPTQ image auto-build ──────────────────────────
+
+let vptqImageReady = false;
+
+/** Ensure the pilox-vllm-vptq image exists. Builds it from vllm-openai + pip install vptq. */
+async function ensureVptqImage(): Promise<void> {
+  if (vptqImageReady) return;
+
+  try {
+    // Check if image already exists
+    const images = await docker.listImages({ filters: { reference: [VLLM_VPTQ_IMAGE] } });
+    if (images.length > 0) {
+      vptqImageReady = true;
+      return;
+    }
+  } catch { /* continue to build */ }
+
+  log.info("VPTQ image not found, building from vLLM base image...");
+
+  try {
+    // Pull base image first (if not present)
+    try {
+      await new Promise<void>((resolve, reject) => {
+        docker.pull(VLLM_IMAGE, {}, (err: Error | null, stream: NodeJS.ReadableStream) => {
+          if (err) return reject(err);
+          docker.modem.followProgress(stream, (e: Error | null) => e ? reject(e) : resolve());
+        });
+      });
+    } catch { /* base image may already be present */ }
+
+    // Create a container from base, install vptq, commit as new image
+    const container = await docker.createContainer({
+      Image: VLLM_IMAGE,
+      Cmd: ["pip", "install", "--no-cache-dir", "vptq"],
+      Tty: false,
+    } as Parameters<typeof docker.createContainer>[0]);
+
+    await container.start();
+    await container.wait();
+
+    // Commit the container as the VPTQ image
+    const [repo, tag] = VLLM_VPTQ_IMAGE.includes(":")
+      ? VLLM_VPTQ_IMAGE.split(":")
+      : [VLLM_VPTQ_IMAGE, "latest"];
+    await container.commit({ repo, tag });
+    await container.remove();
+
+    vptqImageReady = true;
+    log.info("VPTQ image built successfully", { image: VLLM_VPTQ_IMAGE });
+  } catch (err) {
+    log.error("Failed to build VPTQ image", { error: err instanceof Error ? err.message : String(err) });
+    throw new Error(`Failed to build VPTQ image: ${err instanceof Error ? err.message : String(err)}`);
+  }
+}
+
 // ── vLLM container ──────────────────────────────────
 
 async function createVllmContainer(
@@ -410,8 +466,14 @@ async function createVllmContainer(
     vllmArgs.push("--kv-cache-dtype", "fp8");
   }
 
+  // Ensure VPTQ image exists (auto-build from base vLLM image if missing)
+  const selectedImage = config.vptq ? VLLM_VPTQ_IMAGE : VLLM_IMAGE;
+  if (config.vptq) {
+    await ensureVptqImage();
+  }
+
   const createOpts: Record<string, unknown> = {
-    Image: VLLM_IMAGE,
+    Image: selectedImage,
     name: containerName,
     Cmd: vllmArgs,
     Env: [
