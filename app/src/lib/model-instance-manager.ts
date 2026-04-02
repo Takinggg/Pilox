@@ -229,6 +229,27 @@ const MODEL_REGISTRY: Record<string, HfCheckpoints> = {
   "llama3.1:405b": { fp16: "meta-llama/Llama-3.1-405B-Instruct" },
   "llama3.2:3b": { fp16: "meta-llama/Llama-3.2-3B-Instruct" },
   "llama3.2:1b": { fp16: "meta-llama/Llama-3.2-1B-Instruct" },
+  "qwen2.5:72b": {
+    fp16: "Qwen/Qwen2.5-72B-Instruct",
+    awq: "Qwen/Qwen2.5-72B-Instruct-AWQ",
+    gptq: "Qwen/Qwen2.5-72B-Instruct-GPTQ-Int4",
+    vptq: "VPTQ-community/Qwen2.5-72B-Instruct-v8-k65536-65536-woft",
+  },
+  "qwen2.5:32b": {
+    fp16: "Qwen/Qwen2.5-32B-Instruct",
+    awq: "Qwen/Qwen2.5-32B-Instruct-AWQ",
+    gptq: "Qwen/Qwen2.5-32B-Instruct-GPTQ-Int4",
+  },
+  "qwen2.5:14b": {
+    fp16: "Qwen/Qwen2.5-14B-Instruct",
+    awq: "Qwen/Qwen2.5-14B-Instruct-AWQ",
+    gptq: "Qwen/Qwen2.5-14B-Instruct-GPTQ-Int4",
+  },
+  "qwen2.5:7b": {
+    fp16: "Qwen/Qwen2.5-7B-Instruct",
+    awq: "Qwen/Qwen2.5-7B-Instruct-AWQ",
+    gptq: "Qwen/Qwen2.5-7B-Instruct-GPTQ-Int4",
+  },
   "qwen3:8b": { fp16: "Qwen/Qwen3-8B" },
   "qwen3:4b": { fp16: "Qwen/Qwen3-4B" },
   "qwen3:32b": { fp16: "Qwen/Qwen3-32B" },
