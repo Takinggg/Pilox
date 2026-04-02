@@ -168,11 +168,10 @@ async function createVllmContainer(
   const containerName = `pilox-vllm-${sanitizeName(config.modelName)}-${instanceId.slice(0, 8)}`;
   const hostPort = await findFreePort(8001, 8099);
 
-  // Build vLLM command with optimization flags
+  // Build vLLM serve command (new vllm CLI: `vllm serve <model> [options]`)
   const vllmArgs = [
-    "python3", "-m", "vllm.entrypoints.openai.api_server",
+    "serve", config.modelName,
     "--host", "0.0.0.0", "--port", "8000",
-    "--model", config.modelName,
     "--max-model-len", String(config.maxContextLen),
     "--gpu-memory-utilization", "0.9",
     "--trust-remote-code",
