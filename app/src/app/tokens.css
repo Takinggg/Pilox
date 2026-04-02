@@ -1,0 +1,151 @@
+/* ------------------------------------------------------------------ */
+/*  Hive Design Tokens                                                */
+/*                                                                    */
+/*  Separated from globals.css to prevent Tailwind v4 purging.        */
+/*  This file is imported with source(none) so TW4 passes it through  */
+/*  without scanning or tree-shaking.                                 */
+/* ------------------------------------------------------------------ */
+
+/* ── Light (default) ─────────────────────────────────────────────── */
+
+:root {
+  --pilox-primary: #b91c1c;
+  --pilox-primary-alt: #dc2626;
+  --pilox-red: #ff5540;
+  --pilox-on-cta: #ffffff;
+
+  --pilox-bg: #fbfaf9;
+  --pilox-surface-base: #fbfaf9;
+  --pilox-surface-low: #f3f0ef;
+  --pilox-surface-high: #e8e4e2;
+  --pilox-surface-lowest: #ffffff;
+  --pilox-card: #f5f2f1;
+  --pilox-elevated: #ece8e6;
+  --pilox-bg-input: #ffffff;
+
+  --pilox-fg: #1a1716;
+  --pilox-fg-secondary: #3d3836;
+  --pilox-fg-muted: #4a4641;
+
+  --pilox-border: #d4ccc8;
+  --pilox-border-hover: #a89e9a;
+
+  --pilox-on-primary: #ffffff;
+  --pilox-on-tertiary: #7f1d1d;
+
+  --pilox-white: #ffffff;
+  --pilox-black: #000000;
+  --pilox-green: #16a34a;
+  --pilox-blue: #2563eb;
+  --pilox-yellow: #ca8a04;
+  --pilox-purple: #7c3aed;
+  --pilox-orange: #ea580c;
+
+  --background: var(--pilox-bg);
+  --foreground: var(--pilox-fg);
+  --card: var(--pilox-card);
+  --card-foreground: var(--pilox-fg);
+  --popover: var(--pilox-surface-lowest);
+  --popover-foreground: var(--pilox-fg);
+  --primary: var(--pilox-primary);
+  --primary-foreground: var(--pilox-white);
+  --secondary: var(--pilox-surface-low);
+  --secondary-foreground: var(--pilox-fg-secondary);
+  --muted: var(--pilox-surface-low);
+  --muted-foreground: var(--pilox-fg-muted);
+  --accent: var(--pilox-surface-low);
+  --accent-foreground: var(--pilox-fg);
+  --destructive: var(--pilox-red);
+  --border: var(--pilox-border);
+  --input: var(--pilox-border);
+  --ring: var(--pilox-primary);
+
+  --chart-1: var(--pilox-red);
+  --chart-2: var(--pilox-blue);
+  --chart-3: var(--pilox-green);
+  --chart-4: var(--pilox-yellow);
+  --chart-5: var(--pilox-purple);
+
+  --radius: 0rem;
+
+  --sidebar: var(--pilox-surface-lowest);
+  --sidebar-foreground: var(--pilox-fg);
+  --sidebar-primary: var(--pilox-primary);
+  --sidebar-primary-foreground: var(--pilox-white);
+  --sidebar-accent: var(--pilox-surface-low);
+  --sidebar-accent-foreground: var(--pilox-fg);
+  --sidebar-border: var(--pilox-border);
+  --sidebar-ring: var(--pilox-primary);
+
+  --overlay: rgba(0, 0, 0, 0.4);
+}
+
+/* ── Dark ────────────────────────────────────────────────────────── */
+
+.dark {
+  --pilox-primary: #ffb4a8;
+  --pilox-primary-alt: #ff5540;
+  --pilox-red: #ff5540;
+  --pilox-on-cta: #5c0000;
+
+  --pilox-bg: #131313;
+  --pilox-surface-base: #131313;
+  --pilox-surface-low: #1c1b1b;
+  --pilox-surface-high: #2a2a2a;
+  --pilox-surface-lowest: #0e0e0e;
+  --pilox-card: #201f1f;
+  --pilox-elevated: #2a2a2a;
+  --pilox-bg-input: #0e0e0e;
+
+  --pilox-fg: #e5e2e1;
+  --pilox-fg-secondary: #ebbbb4;
+  --pilox-fg-muted: #c09890;
+
+  --pilox-border: #603e39;
+  --pilox-border-hover: #8b5850;
+
+  --pilox-on-primary: #5c0000;
+  --pilox-on-tertiary: #590703;
+
+  --pilox-green: #22c55e;
+  --pilox-blue: #3b82f6;
+  --pilox-yellow: #eab308;
+  --pilox-purple: #a78bfa;
+  --pilox-orange: #f97316;
+
+  --background: var(--pilox-bg);
+  --foreground: var(--pilox-fg);
+  --card: var(--pilox-card);
+  --card-foreground: var(--pilox-fg);
+  --popover: var(--pilox-surface-low);
+  --popover-foreground: var(--pilox-fg);
+  --primary: var(--pilox-primary);
+  --primary-foreground: var(--pilox-on-primary);
+  --secondary: var(--pilox-surface-low);
+  --secondary-foreground: var(--pilox-fg-secondary);
+  --muted: var(--pilox-surface-low);
+  --muted-foreground: var(--pilox-fg-muted);
+  --accent: var(--pilox-surface-low);
+  --accent-foreground: var(--pilox-fg);
+  --destructive: var(--pilox-red);
+  --border: var(--pilox-border);
+  --input: var(--pilox-border);
+  --ring: var(--pilox-primary);
+
+  --chart-1: var(--pilox-red);
+  --chart-2: var(--pilox-blue);
+  --chart-3: var(--pilox-green);
+  --chart-4: var(--pilox-yellow);
+  --chart-5: var(--pilox-purple);
+
+  --sidebar: var(--pilox-surface-lowest);
+  --sidebar-foreground: var(--pilox-fg-muted);
+  --sidebar-primary: var(--pilox-primary);
+  --sidebar-primary-foreground: var(--pilox-on-primary);
+  --sidebar-accent: var(--pilox-surface-low);
+  --sidebar-accent-foreground: var(--pilox-fg);
+  --sidebar-border: var(--pilox-border);
+  --sidebar-ring: var(--pilox-primary);
+
+  --overlay: rgba(0, 0, 0, 0.6);
+}
