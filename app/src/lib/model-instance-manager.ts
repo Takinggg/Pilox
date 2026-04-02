@@ -170,6 +170,49 @@ export async function createModelInstance(config: ModelInstanceConfig): Promise<
   }
 }
 
+// ── Ollama → HuggingFace model name mapping for vLLM ──
+
+/** Common Ollama names → HuggingFace IDs. vLLM needs HF IDs, not Ollama tags. */
+const OLLAMA_TO_HF: Record<string, string> = {
+  "deepseek-r1:70b": "deepseek-ai/DeepSeek-R1-Distill-Llama-70B",
+  "deepseek-r1:32b": "deepseek-ai/DeepSeek-R1-Distill-Qwen-32B",
+  "deepseek-r1:14b": "deepseek-ai/DeepSeek-R1-Distill-Qwen-14B",
+  "deepseek-r1:7b": "deepseek-ai/DeepSeek-R1-Distill-Qwen-7B",
+  "deepseek-r1:8b-llama": "deepseek-ai/DeepSeek-R1-Distill-Llama-8B",
+  "deepseek-r1:671b": "deepseek-ai/DeepSeek-R1",
+  "llama3.3": "meta-llama/Llama-3.3-70B-Instruct",
+  "llama3.1:8b": "meta-llama/Llama-3.1-8B-Instruct",
+  "llama3.1:70b": "meta-llama/Llama-3.1-70B-Instruct",
+  "llama3.1:405b": "meta-llama/Llama-3.1-405B-Instruct",
+  "llama3.2:3b": "meta-llama/Llama-3.2-3B-Instruct",
+  "llama3.2:1b": "meta-llama/Llama-3.2-1B-Instruct",
+  "qwen3:8b": "Qwen/Qwen3-8B",
+  "qwen3:4b": "Qwen/Qwen3-4B",
+  "qwen3:32b": "Qwen/Qwen3-32B",
+  "mistral:7b": "mistralai/Mistral-7B-Instruct-v0.3",
+  "mixtral:8x7b": "mistralai/Mixtral-8x7B-Instruct-v0.1",
+  "gemma2:9b": "google/gemma-2-9b-it",
+  "gemma2:27b": "google/gemma-2-27b-it",
+  "phi3:14b": "microsoft/Phi-3-medium-128k-instruct",
+  "codellama:34b": "codellama/CodeLlama-34b-Instruct-hf",
+  "codellama:7b": "codellama/CodeLlama-7b-Instruct-hf",
+};
+
+/** Resolve a model name for vLLM — convert Ollama tags to HF IDs. */
+function resolveVllmModelName(modelName: string): string {
+  // Already a HF ID (contains /)
+  if (modelName.includes("/")) return modelName;
+  // Lookup in mapping
+  const hf = OLLAMA_TO_HF[modelName] || OLLAMA_TO_HF[modelName.toLowerCase()];
+  if (hf) return hf;
+  // Strip Ollama tag suffix and try again (e.g. "deepseek-r1:70b" → "deepseek-r1")
+  const base = modelName.split(":")[0];
+  if (base !== modelName && OLLAMA_TO_HF[base]) return OLLAMA_TO_HF[base];
+  // Fallback: return as-is (will likely fail but at least logs the real name)
+  log.warn("No HuggingFace ID mapping for model", { modelName });
+  return modelName;
+}
+
 // ── vLLM container ──────────────────────────────────
 
 async function createVllmContainer(
@@ -178,10 +221,13 @@ async function createVllmContainer(
 ): Promise<{ containerId: string; ip: string; port: number }> {
   const containerName = `pilox-vllm-${sanitizeName(config.modelName)}-${instanceId.slice(0, 8)}`;
   const hostPort = await findFreePort(8001, 8099);
+  const hfModelName = resolveVllmModelName(config.modelName);
+
+  log.info("vLLM model name resolved", { original: config.modelName, resolved: hfModelName });
 
   // Build vLLM serve command (new vllm CLI: `vllm serve <model> [options]`)
   const vllmArgs = [
-    "serve", config.modelName,
+    "serve", hfModelName,
     "--host", "0.0.0.0", "--port", "8000",
     "--max-model-len", String(config.maxContextLen),
     "--gpu-memory-utilization", "0.9",
@@ -194,6 +240,8 @@ async function createVllmContainer(
   if (config.prefixCaching) {
     vllmArgs.push("--enable-prefix-caching");
   }
+  // Speculative decoding — only if explicitly enabled and model supports it.
+  // vLLM v0.6+ uses --speculative-config or --speculative-model depending on version.
   if (config.speculativeDecoding && config.speculativeModel) {
     vllmArgs.push("--speculative-model", config.speculativeModel);
     vllmArgs.push("--num-speculative-tokens", "5");
