@@ -115,7 +115,7 @@ export type UseInferenceSetup = InferenceSetupState & InferenceSetupActions;
 
 // ── Hook ────────────────────────────────────────────
 
-export function useInferenceSetup(): UseInferenceSetup {
+export function useInferenceSetup(options?: { initialModel?: string }): UseInferenceSetup {
   // ── Core state ──────────────────────────────────
   const [mode, setMode] = useState<WizardMode>("auto");
   const [step, setStep] = useState<ExpertStep>("backends");
@@ -130,7 +130,7 @@ export function useInferenceSetup(): UseInferenceSetup {
 
   // ── Expert fields ─────────────────────────────────
   const [selectedBackend, setSelectedBackend] = useState<Backend>("ollama");
-  const [selectedModel, setSelectedModel] = useState("");
+  const [selectedModel, setSelectedModel] = useState(options?.initialModel ?? "");
   const [quantization, setQuantization] = useState<Quantization>("Q4_K_M");
   const [turboQuant, setTurboQuant] = useState(true);
   const [speculative, setSpeculative] = useState(false);
@@ -176,7 +176,7 @@ export function useInferenceSetup(): UseInferenceSetup {
 
         setInstalledModels(models);
         // Auto-select first model if none selected
-        if (models.length > 0 && !stateRef.current.selectedModel) {
+        if (models.length > 0 && !stateRef.current.selectedModel && !options?.initialModel) {
           setSelectedModel(models[0].name);
         }
       })

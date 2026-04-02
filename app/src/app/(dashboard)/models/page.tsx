@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
   Download,
@@ -37,14 +38,7 @@ import {
   type ModelCategory,
   type HardwareTier,
 } from "@/lib/llm-model-catalog";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from "@/components/ui/dialog";
-import { InferenceSetupPanel } from "@/components/settings/inference";
+// InferenceSetupPanel moved to /models/[name] detail page
 
 // ── Types ────────────────────────────────────────────
 
@@ -91,6 +85,7 @@ const CATEGORY_ICONS: Record<string, LucideIcon> = {
 // ── Component ────────────────────────────────────────
 
 export default function ModelsPage() {
+  const router = useRouter();
   const [installedModels, setInstalledModels] = useState<InstalledModel[]>([]);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<ViewMode>("installed");
@@ -104,10 +99,6 @@ export default function ModelsPage() {
 
   // Concurrent download tracking
   const [downloadStates, setDownloadStates] = useState<Map<string, DownloadState>>(new Map());
-
-  // Inference config popup — opens when a model pull starts
-  const [showInferenceConfig, setShowInferenceConfig] = useState(false);
-  const [configModelName, setConfigModelName] = useState<string | null>(null);
 
   // Import modal
   const [showImport, setShowImport] = useState(false);
@@ -204,9 +195,8 @@ export default function ModelsPage() {
     if (downloadStates.has(displayKey)) return;
     updateDownloadState(displayKey, { progress: 0, status: "Configuring vLLM...", error: undefined });
 
-    // Open inference config popup while downloading
-    setConfigModelName(modelName);
-    setShowInferenceConfig(true);
+    // Navigate to model detail page for inference config
+    router.push(`/models/${encodeURIComponent(modelName)}`);
 
     try {
       const res = await fetch("/api/models/pull-vllm", {
@@ -288,10 +278,8 @@ export default function ModelsPage() {
 
     updateDownloadState(key, { progress: 0, status: "Starting download...", error: undefined });
 
-    // Open inference config popup while downloading
-    const catalogModel = MODEL_CATALOG.find((m) => m.ollamaId === ollamaName || m.id === key);
-    setConfigModelName(catalogModel?.name ?? ollamaName);
-    setShowInferenceConfig(true);
+    // Navigate to model detail page for inference config
+    router.push(`/models/${encodeURIComponent(ollamaName)}`);
 
     try {
       const res = await fetch("/api/models/pull", {
@@ -634,7 +622,8 @@ export default function ModelsPage() {
                   return (
                     <div
                       key={model.name}
-                      className={`group relative flex items-center px-5 py-3 transition-colors hover:bg-[var(--pilox-elevated)]/30 ${i > 0 ? "border-t border-border" : ""}`}
+                      onClick={() => router.push(`/models/${encodeURIComponent(model.name)}`)}
+                      className={`group relative flex items-center px-5 py-3 transition-colors hover:bg-[var(--pilox-elevated)]/30 cursor-pointer ${i > 0 ? "border-t border-border" : ""}`}
                     >
                       <div className="flex-[2] min-w-0">
                         <span className="text-[13px] font-medium text-foreground truncate block">{model.name}</span>
@@ -660,7 +649,7 @@ export default function ModelsPage() {
                       <span className="w-[80px] text-[10px] text-muted-foreground">{formatDate(model.modifiedAt)}</span>
                       <div className="relative w-9">
                         <button
-                          onClick={() => setActionMenu(actionMenu === model.name ? null : model.name)}
+                          onClick={(e) => { e.stopPropagation(); setActionMenu(actionMenu === model.name ? null : model.name); }}
                           className="flex h-full w-full items-center justify-center text-muted-foreground hover:text-foreground"
                         >
                           <MoreHorizontal className="h-4 w-4" />
@@ -863,20 +852,6 @@ export default function ModelsPage() {
           </div>
         </div>
       )}
-      {/* ─── Inference Config Popup ─── */}
-      <Dialog open={showInferenceConfig} onOpenChange={setShowInferenceConfig}>
-        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Configure Inference{configModelName ? ` — ${configModelName}` : ""}</DialogTitle>
-            <DialogDescription>
-              Configure how Pilox runs this model while it downloads. Your settings will be applied when the model is ready.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="mt-2">
-            <InferenceSetupPanel />
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
