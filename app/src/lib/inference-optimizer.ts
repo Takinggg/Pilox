@@ -146,7 +146,7 @@ export function optimizeInference(
 ): InferenceConfig {
   const fp16GB = guessModelSizeGB(modelId);
   const vramGB = hw.gpu.vramMB / 1024;
-  const availRamGB = Math.max(0, (hw.ram.availableMB / 1024) - 8);
+  const availRamGB = Math.max(0, (hw.ram.availableMB / 1024) - 4);
   const hasGpu = hw.gpu.available && vramGB >= 2;
 
   // Small model (<8B FP16 = <16GB) → Ollama Q4 is simplest
@@ -273,7 +273,7 @@ export function estimatePerformance(
 
   // ── Warnings ──────────────────────────────────────
   const warnings: string[] = [];
-  const availRamGB = Math.max(0, (hw.ram.availableMB / 1024) - 8);
+  const availRamGB = Math.max(0, (hw.ram.availableMB / 1024) - 4);
   const fits = totalGB <= (vramGB + availRamGB);
 
   if (config.cpuOffloadGB > 0) {

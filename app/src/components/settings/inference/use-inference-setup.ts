@@ -505,7 +505,7 @@ export function useInferenceSetup(options?: { initialModel?: string }): UseInfer
     : installedModels;
 
   const maxOffloadGB = hardware
-    ? Math.max(0, Math.round(hardware.ram.totalMB / 1024 - 8))
+    ? Math.max(0, Math.round(hardware.ram.totalMB / 1024 - 4))
     : 0;
 
   const selectedModelDef = installedModels.find((m) => m.name === selectedModel);
