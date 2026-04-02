@@ -78,7 +78,8 @@ const PILOX_NETWORK = "pilox-network";
 const OLLAMA_IMAGE = process.env.OLLAMA_IMAGE || "ollama/ollama:latest";
 const VLLM_IMAGE = process.env.VLLM_IMAGE || "vllm/vllm-openai:latest";
 const VLLM_VPTQ_IMAGE = process.env.VLLM_VPTQ_IMAGE || "pilox-vllm-vptq:latest";
-const APHRODITE_IMAGE = process.env.APHRODITE_IMAGE || "alpindale/aphrodite-openai:latest";
+const APHRODITE_BASE_IMAGE = "alpindale/aphrodite-openai:latest";
+const APHRODITE_IMAGE = process.env.APHRODITE_IMAGE || "pilox-aphrodite:latest";
 
 // ── Create instance ─────────────────────────────────
 
@@ -366,59 +367,64 @@ function pickCheckpoint(entry: HfCheckpoints, quantization: string | undefined, 
   return entry.fp16;
 }
 
-// ── VPTQ image auto-build ──────────────────────────
+// ── Aphrodite image auto-build (VPTQ + TurboQuant) ──
 
-let vptqImageReady = false;
+let aphroditeImageReady = false;
 
-/** Ensure the pilox-vllm-vptq image exists. Builds it from vllm-openai + pip install vptq. */
-async function ensureVptqImage(): Promise<void> {
-  if (vptqImageReady) return;
+/**
+ * Ensure the pilox-aphrodite image exists with VPTQ + TurboQuant installed.
+ * First deploy takes ~60s to build, subsequent deploys use the cached image.
+ */
+async function ensureAphroditeImage(): Promise<void> {
+  if (aphroditeImageReady) return;
 
   try {
-    // Check if image already exists
-    const images = await docker.listImages({ filters: { reference: [VLLM_VPTQ_IMAGE] } });
+    const images = await docker.listImages({ filters: { reference: [APHRODITE_IMAGE] } });
     if (images.length > 0) {
-      vptqImageReady = true;
+      aphroditeImageReady = true;
       return;
     }
   } catch { /* continue to build */ }
 
-  log.info("VPTQ image not found, building from vLLM base image...");
+  log.info("Aphrodite image not found, building with VPTQ + TurboQuant...");
 
   try {
-    // Pull base image first (if not present)
+    // Pull base Aphrodite image
     try {
       await new Promise<void>((resolve, reject) => {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (docker as any).pull(VLLM_IMAGE, {}, (err: any, stream: any) => {
+        (docker as any).pull(APHRODITE_BASE_IMAGE, {}, (err: any, stream: any) => {
           if (err) return reject(err);
           (docker as any).modem.followProgress(stream, (e: any) => e ? reject(e) : resolve());
         });
       });
     } catch { /* base image may already be present */ }
 
-    // Create a container from base, install vptq, commit as new image
+    // Install TurboQuant (0xSero Triton kernels) into the Aphrodite container
+    // VPTQ is already native in Aphrodite — no extra install needed
     const container = await docker.createContainer({
-      Image: VLLM_IMAGE,
-      Cmd: ["pip", "install", "--no-cache-dir", "vptq"],
+      Image: APHRODITE_BASE_IMAGE,
+      Cmd: ["pip", "install", "--no-cache-dir",
+        "git+https://github.com/0xSero/turboquant.git",
+      ],
       Tty: false,
     } as Parameters<typeof docker.createContainer>[0]);
 
     await container.start();
     await container.wait();
 
-    // Commit the container as the VPTQ image
-    const [repo, tag] = VLLM_VPTQ_IMAGE.includes(":")
-      ? VLLM_VPTQ_IMAGE.split(":")
-      : [VLLM_VPTQ_IMAGE, "latest"];
+    // Commit as pilox-aphrodite:latest
+    const [repo, tag] = APHRODITE_IMAGE.includes(":")
+      ? APHRODITE_IMAGE.split(":")
+      : [APHRODITE_IMAGE, "latest"];
     await container.commit({ repo, tag });
     await container.remove();
 
-    vptqImageReady = true;
-    log.info("VPTQ image built successfully", { image: VLLM_VPTQ_IMAGE });
+    aphroditeImageReady = true;
+    log.info("Aphrodite image built successfully", { image: APHRODITE_IMAGE });
   } catch (err) {
-    log.error("Failed to build VPTQ image", { error: err instanceof Error ? err.message : String(err) });
-    throw new Error(`Failed to build VPTQ image: ${err instanceof Error ? err.message : String(err)}`);
+    log.error("Failed to build Aphrodite image", { error: err instanceof Error ? err.message : String(err) });
+    throw new Error(`Failed to build Aphrodite image: ${err instanceof Error ? err.message : String(err)}`);
   }
 }
 
@@ -469,14 +475,8 @@ async function createVllmContainer(
     vllmArgs.push("--kv-cache-dtype", "fp8");
   }
 
-  // Ensure VPTQ image exists (auto-build from base vLLM image if missing)
-  const selectedImage = config.vptq ? VLLM_VPTQ_IMAGE : VLLM_IMAGE;
-  if (config.vptq) {
-    await ensureVptqImage();
-  }
-
   const createOpts: Record<string, unknown> = {
-    Image: selectedImage,
+    Image: VLLM_IMAGE,
     name: containerName,
     Cmd: vllmArgs,
     Env: [
@@ -527,7 +527,10 @@ async function createAphroditeContainer(
 
   log.info("Aphrodite model resolved", { original: config.modelName, resolved: hfModelName, quantization: effectiveQuant });
 
-  // Aphrodite uses the same CLI as vLLM but supports VPTQ natively
+  // Auto-build pilox-aphrodite image with TurboQuant + VPTQ on first use
+  await ensureAphroditeImage();
+
+  // Build Aphrodite serve args
   const aphroditeArgs = [
     "--model", hfModelName,
     "--host", "0.0.0.0", "--port", "2242",
@@ -542,7 +545,7 @@ async function createAphroditeContainer(
   if (config.prefixCaching) {
     aphroditeArgs.push("--enable-prefix-caching");
   }
-  // Aphrodite supports VPTQ natively — pass quantization for all types
+  // Quantization — Aphrodite supports VPTQ natively
   if (effectiveQuant === "vptq") {
     aphroditeArgs.push("--quantization", "vptq");
   } else if (effectiveQuant === "awq") {
@@ -550,7 +553,8 @@ async function createAphroditeContainer(
   } else if (effectiveQuant === "gptq") {
     aphroditeArgs.push("--quantization", "gptq");
   }
-  // KV cache compression
+  // KV cache compression — real TurboQuant via 0xSero Triton kernels
+  // Falls back to fp8 if TurboQuant module isn't available at runtime
   if (config.turboQuant) {
     aphroditeArgs.push("--kv-cache-dtype", "fp8");
   }
