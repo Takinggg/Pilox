@@ -141,8 +141,8 @@ export const modelInstances = pgTable("model_instances", {
   hypervisor: hypervisorTypeEnum("hypervisor").notNull().default("docker"),
   /** VM or container ID from the hypervisor */
   instanceId: varchar("instance_id", { length: 128 }),
-  /** IP address of the running instance */
-  instanceIp: varchar("instance_ip", { length: 45 }),
+  /** IP address or Docker DNS hostname of the running instance */
+  instanceIp: varchar("instance_ip", { length: 128 }),
   /** Port the inference engine listens on */
   port: integer("port").default(11434),
   /** Current status */

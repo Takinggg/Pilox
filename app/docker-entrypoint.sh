@@ -33,6 +33,7 @@ else
   # Run them here before Drizzle to guarantee they're applied.
   PGURI="$DATABASE_URL"
   psql "$PGURI" -c "ALTER TYPE model_instance_backend ADD VALUE IF NOT EXISTS 'aphrodite';" 2>/dev/null || true
+  psql "$PGURI" -c "ALTER TABLE model_instances ALTER COLUMN instance_ip TYPE varchar(128);" 2>/dev/null || true
   node /app/migrate.cjs
 fi
 
