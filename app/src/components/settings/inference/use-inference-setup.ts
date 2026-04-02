@@ -237,18 +237,16 @@ export function useInferenceSetup(options?: { initialModel?: string }): UseInfer
         credentials: "include",
         body: JSON.stringify({
           modelId: s.selectedModel,
-          config: s.mode === "expert"
-            ? {
-                backend: s.selectedBackend,
-                quantization: s.quantization,
-                turboQuant: s.turboQuant,
-                speculativeDecoding: s.speculative,
-                cpuOffloadGB: s.cpuOffload,
-                maxContextLen: s.contextLen,
-                prefixCaching: s.prefixCaching,
-                vptq: s.vptq,
-              }
-            : undefined,
+          config: {
+            backend: s.selectedBackend,
+            quantization: s.quantization,
+            turboQuant: s.turboQuant,
+            speculativeDecoding: s.speculative,
+            cpuOffloadGB: s.cpuOffload,
+            maxContextLen: s.contextLen,
+            prefixCaching: s.prefixCaching,
+            vptq: s.vptq,
+          },
         }),
       });
       if (res.ok) {
@@ -265,7 +263,7 @@ export function useInferenceSetup(options?: { initialModel?: string }): UseInfer
     const id = setTimeout(fetchEstimate, 250);
     return () => clearTimeout(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hardware, mode, selectedModel, quantization, turboQuant, speculative, cpuOffload, contextLen, prefixCaching, vptq, fetchEstimate]);
+  }, [hardware, mode, selectedModel, selectedBackend, quantization, turboQuant, speculative, cpuOffload, contextLen, prefixCaching, vptq, fetchEstimate]);
 
   // (selectedBackend uses the setter directly — no callback needed)
 

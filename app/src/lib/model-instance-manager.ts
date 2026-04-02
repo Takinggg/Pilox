@@ -189,19 +189,17 @@ const MODEL_REGISTRY: Record<string, HfCheckpoints> = {
     fp16: "deepseek-ai/DeepSeek-R1-Distill-Llama-70B",
     awq: "hugging-quants/DeepSeek-R1-Distill-Llama-70B-AWQ-INT4",
     gptq: "ModelCloud/DeepSeek-R1-Distill-Llama-70B-gptq-4bit",
-    vptq: "VPTQ-community/DeepSeek-R1-Distill-Llama-70B-v8-k65536-65536-woft",
+    // No public VPTQ checkpoint available for 70B Llama
   },
   "deepseek-r1:32b": {
     fp16: "deepseek-ai/DeepSeek-R1-Distill-Qwen-32B",
     awq: "hugging-quants/DeepSeek-R1-Distill-Qwen-32B-AWQ-INT4",
     gptq: "ModelCloud/DeepSeek-R1-Distill-Qwen-32B-gptq-4bit",
-    vptq: "VPTQ-community/DeepSeek-R1-Distill-Qwen-32B-v8-k65536-65536-woft",
   },
   "deepseek-r1:14b": {
     fp16: "deepseek-ai/DeepSeek-R1-Distill-Qwen-14B",
     awq: "hugging-quants/DeepSeek-R1-Distill-Qwen-14B-AWQ-INT4",
     gptq: "ModelCloud/DeepSeek-R1-Distill-Qwen-14B-gptq-4bit",
-    vptq: "VPTQ-community/DeepSeek-R1-Distill-Qwen-14B-v8-k65536-65536-woft",
   },
   "deepseek-r1:7b": {
     fp16: "deepseek-ai/DeepSeek-R1-Distill-Qwen-7B",
