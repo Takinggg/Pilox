@@ -21,23 +21,34 @@ export interface HardwareProfile {
   disk: { freeGB: number; type: "ssd" | "hdd" | "unknown" };
 }
 
-// ── GPU detection (nvidia-smi → Ollama fallback) ────
+// ── GPU detection (NVIDIA → AMD → Intel → Apple → Docker → Ollama) ────
 
 /**
- * Try nvidia-smi first (works on host / GPU-enabled containers).
- * If unavailable, query Ollama's API for GPU info (works in any container
- * that can reach Ollama over the network).
+ * Detect GPU across all vendors. Tries local CLI tools first, then
+ * falls back to docker exec and Ollama API.
  */
 async function detectGpu(): Promise<GpuInfo> {
-  // Strategy 1: nvidia-smi locally (works on host / GPU-enabled containers)
-  const smiResult = await detectGpuViaNvidiaSmi();
-  if (smiResult.available) return smiResult;
+  // Strategy 1: NVIDIA — nvidia-smi (host or GPU-enabled container)
+  const nvidia = await detectGpuViaNvidiaSmi();
+  if (nvidia.available) return nvidia;
 
-  // Strategy 2: nvidia-smi via dockerode exec in Ollama container (exact VRAM)
+  // Strategy 2: AMD — rocm-smi (ROCm-enabled host)
+  const amd = await detectGpuViaRocmSmi();
+  if (amd.available) return amd;
+
+  // Strategy 3: Intel — xpu-smi or clinfo (Arc / Data Center GPUs)
+  const intel = await detectGpuViaIntel();
+  if (intel.available) return intel;
+
+  // Strategy 4: Apple Silicon — system_profiler (macOS Metal)
+  const apple = await detectGpuViaAppleSilicon();
+  if (apple.available) return apple;
+
+  // Strategy 5: nvidia-smi via dockerode exec in Ollama container
   const dockerResult = await detectGpuViaDockerExec();
   if (dockerResult.available) return dockerResult;
 
-  // Strategy 3: Ollama API (estimated VRAM from loaded model — less accurate)
+  // Strategy 6: Ollama API (estimated VRAM from loaded model — least accurate)
   const ollamaResult = await detectGpuViaOllama();
   if (ollamaResult.available) return ollamaResult;
 
@@ -63,6 +74,204 @@ async function detectGpuViaNvidiaSmi(): Promise<GpuInfo> {
   } catch {
     return { name: "None", vramMB: 0, available: false };
   }
+}
+
+// ── AMD GPU detection via rocm-smi ─────────────────
+
+/**
+ * Detect AMD GPU via rocm-smi (ROCm). Works on Linux hosts with AMD GPUs.
+ * Output format: CSV with "card0, gfx1100, 0x744c, 16368, ..."
+ */
+async function detectGpuViaRocmSmi(): Promise<GpuInfo> {
+  try {
+    const { stdout } = await execFileAsync("rocm-smi", [
+      "--showproductname", "--showmeminfo", "vram",
+      "--csv",
+    ], { timeout: 5_000 });
+
+    // Parse product name from rocm-smi output
+    const lines = stdout.trim().split("\n");
+
+    // Try to find GPU name from --showproductname
+    let gpuName = "AMD GPU";
+    const nameMatch = stdout.match(/Card Series:\s*(.+)/i) || stdout.match(/Marketing Name:\s*(.+)/i);
+    if (nameMatch) gpuName = nameMatch[1].trim();
+
+    // Try to find total VRAM from --showmeminfo vram
+    let vramMB = 0;
+    const vramMatch = stdout.match(/Total Memory \(B\):\s*(\d+)/i);
+    if (vramMatch) {
+      vramMB = Math.round(parseInt(vramMatch[1], 10) / 1024 / 1024);
+    } else {
+      // Fallback: look for VRAM in MB directly
+      const mbMatch = stdout.match(/(\d{3,6})\s*MB/i);
+      if (mbMatch) vramMB = parseInt(mbMatch[1], 10);
+    }
+
+    if (vramMB > 0) {
+      return { name: gpuName, vramMB, available: true };
+    }
+
+    // Last resort: try rocminfo
+    return detectGpuViaRocmInfo();
+  } catch {
+    return detectGpuViaRocmInfo();
+  }
+}
+
+async function detectGpuViaRocmInfo(): Promise<GpuInfo> {
+  try {
+    const { stdout } = await execFileAsync("rocminfo", [], { timeout: 5_000 });
+
+    const nameMatch = stdout.match(/Marketing Name:\s*(.+)/i)
+      || stdout.match(/Name:\s*(gfx\w+)/i);
+    const poolMatch = stdout.match(/Pool.*Size.*?:\s*(\d+)\s*\(.*?KB\)/i)
+      || stdout.match(/Size:\s*(\d+)\s*KB.*?VRAM/i);
+
+    if (nameMatch) {
+      let vramMB = 0;
+      if (poolMatch) {
+        vramMB = Math.round(parseInt(poolMatch[1], 10) / 1024);
+      }
+      return {
+        name: nameMatch[1].trim(),
+        vramMB: vramMB || estimateAmdVram(nameMatch[1].trim()),
+        available: true,
+      };
+    }
+  } catch { /* rocminfo not available */ }
+  return { name: "None", vramMB: 0, available: false };
+}
+
+/** Estimate VRAM for known AMD GPUs when detection fails */
+function estimateAmdVram(name: string): number {
+  const n = name.toLowerCase();
+  if (n.includes("7900 xtx")) return 24576;
+  if (n.includes("7900 xt")) return 20480;
+  if (n.includes("7900 gre")) return 16384;
+  if (n.includes("7800 xt")) return 16384;
+  if (n.includes("7700 xt")) return 12288;
+  if (n.includes("7600")) return 8192;
+  if (n.includes("6950 xt")) return 16384;
+  if (n.includes("6900")) return 16384;
+  if (n.includes("6800")) return 16384;
+  if (n.includes("6700 xt")) return 12288;
+  if (n.includes("6600")) return 8192;
+  if (n.includes("mi300")) return 192 * 1024;
+  if (n.includes("mi250")) return 128 * 1024;
+  if (n.includes("mi210")) return 65536;
+  if (n.includes("mi100")) return 32768;
+  return 8192; // safe default for unknown AMD GPU
+}
+
+// ── Intel GPU detection via xpu-smi / clinfo ───────
+
+/**
+ * Detect Intel GPU (Arc, Data Center, integrated). Tries xpu-smi first (Intel
+ * discrete GPUs), then clinfo (OpenCL, covers integrated Intel too).
+ */
+async function detectGpuViaIntel(): Promise<GpuInfo> {
+  // Try xpu-smi (Intel discrete GPUs: Arc A770, A750, Flex, Max)
+  try {
+    const { stdout } = await execFileAsync("xpu-smi", ["discovery"], { timeout: 5_000 });
+    const nameMatch = stdout.match(/Device Name:\s*(.+)/i);
+    const memMatch = stdout.match(/Memory Physical Size:\s*([\d.]+)\s*(MiB|GiB|MB|GB)/i);
+
+    if (nameMatch && memMatch) {
+      let vramMB = parseFloat(memMatch[1]);
+      if (memMatch[2].toLowerCase().startsWith("g")) vramMB *= 1024;
+      return {
+        name: nameMatch[1].trim(),
+        vramMB: Math.round(vramMB),
+        available: true,
+      };
+    }
+  } catch { /* xpu-smi not available */ }
+
+  // Fallback: clinfo (OpenCL) — works on Linux/Windows for Intel iGPU/dGPU
+  try {
+    const { stdout } = await execFileAsync("clinfo", [], { timeout: 5_000 });
+    // Find Intel device
+    const sections = stdout.split(/Device Name/i);
+    for (const section of sections) {
+      if (!section.toLowerCase().includes("intel")) continue;
+      const nameMatch = section.match(/^\s*(.+)/);
+      const memMatch = section.match(/Global Memory Size:\s*(\d+)/i);
+      if (nameMatch && memMatch) {
+        const vramBytes = parseInt(memMatch[1], 10);
+        return {
+          name: `Intel ${nameMatch[1].trim()}`,
+          vramMB: Math.round(vramBytes / 1024 / 1024),
+          available: true,
+        };
+      }
+    }
+  } catch { /* clinfo not available */ }
+
+  return { name: "None", vramMB: 0, available: false };
+}
+
+// ── Apple Silicon detection via system_profiler ────
+
+/**
+ * Detect Apple Silicon GPU (M1/M2/M3/M4). On macOS, the GPU shares
+ * unified memory — we report total RAM as "VRAM" since Metal can use it all.
+ */
+async function detectGpuViaAppleSilicon(): Promise<GpuInfo> {
+  if (process.platform !== "darwin") {
+    return { name: "None", vramMB: 0, available: false };
+  }
+
+  try {
+    const { stdout } = await execFileAsync("system_profiler", [
+      "SPDisplaysDataType", "-json",
+    ], { timeout: 5_000 });
+
+    const data = JSON.parse(stdout) as {
+      SPDisplaysDataType?: Array<{
+        sppci_model?: string;
+        _name?: string;
+        spdisplays_vram_shared?: string;
+        spdisplays_vram?: string;
+      }>;
+    };
+
+    const gpu = data.SPDisplaysDataType?.[0];
+    if (!gpu) return { name: "None", vramMB: 0, available: false };
+
+    const name = gpu.sppci_model || gpu._name || "Apple GPU";
+
+    // Apple Silicon uses unified memory — VRAM = shared system RAM
+    const vramStr = gpu.spdisplays_vram_shared || gpu.spdisplays_vram || "";
+    const vramMatch = vramStr.match(/([\d.]+)\s*(GB|MB)/i);
+    let vramMB = 0;
+    if (vramMatch) {
+      vramMB = parseFloat(vramMatch[1]);
+      if (vramMatch[2].toUpperCase() === "GB") vramMB *= 1024;
+    }
+
+    // Fallback: use total system RAM (unified memory)
+    if (vramMB === 0) {
+      vramMB = Math.round(os.totalmem() / 1024 / 1024);
+    }
+
+    return { name, vramMB, available: true };
+  } catch {
+    // Fallback: detect via sysctl on macOS
+    try {
+      const { stdout } = await execFileAsync("sysctl", ["-n", "machdep.cpu.brand_string"], { timeout: 3_000 });
+      if (stdout.toLowerCase().includes("apple")) {
+        const totalMB = Math.round(os.totalmem() / 1024 / 1024);
+        return {
+          name: `Apple ${stdout.trim()} GPU`,
+          vramMB: totalMB, // unified memory
+          available: true,
+        };
+      }
+    } catch { /* not macOS or sysctl failed */ }
+  }
+
+  return { name: "None", vramMB: 0, available: false };
 }
 
 /**
