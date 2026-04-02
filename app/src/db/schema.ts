@@ -126,7 +126,7 @@ export const agents = pgTable("agents", {
 ]);
 
 // ── Model Instances (per-model inference VMs/containers) ──
-export const modelInstanceBackendEnum = pgEnum("model_instance_backend", ["ollama", "vllm"]);
+export const modelInstanceBackendEnum = pgEnum("model_instance_backend", ["ollama", "vllm", "aphrodite"]);
 export const modelInstanceStatusEnum = pgEnum("model_instance_status", ["creating", "pulling", "running", "stopped", "error"]);
 
 export const modelInstances = pgTable("model_instances", {

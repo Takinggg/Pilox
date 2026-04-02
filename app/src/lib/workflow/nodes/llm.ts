@@ -71,8 +71,11 @@ export async function executeLlmNode(
       stream: false,
       options: { temperature: temperature ?? 0.7, num_predict: maxTokens ?? 4096 },
     };
-  } else if (resolvedProvider === "vllm") {
-    const base = instanceUrl ?? process.env.VLLM_URL ?? "http://vllm:8000";
+  } else if (resolvedProvider === "vllm" || resolvedProvider === "aphrodite") {
+    const defaultBase = resolvedProvider === "aphrodite"
+      ? "http://localhost:2242"
+      : (process.env.VLLM_URL ?? "http://vllm:8000");
+    const base = instanceUrl ?? defaultBase;
     url = `${base}/v1/chat/completions`;
     body = { model, messages, temperature: temperature ?? 0.7, max_tokens: maxTokens ?? 4096 };
   } else {

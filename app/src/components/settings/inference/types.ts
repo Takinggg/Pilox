@@ -19,8 +19,17 @@ export interface HardwareProfile {
 
 // ── Inference config ────────────────────────────────
 
-export type Backend = "ollama" | "vllm" | "localai" | "airllm";
+export type Backend = "ollama" | "vllm" | "aphrodite" | "localai" | "airllm";
 export type Quantization = "Q4_K_M" | "awq" | "gptq" | "fp16" | "vptq";
+
+/** Which quantization formats each backend supports */
+export const BACKEND_QUANTS: Record<Backend, Quantization[]> = {
+  ollama: ["Q4_K_M", "fp16"],
+  vllm: ["awq", "gptq", "fp16"],
+  aphrodite: ["awq", "gptq", "vptq", "fp16"],
+  localai: ["Q4_K_M", "fp16"],
+  airllm: ["fp16"],
+};
 
 export interface InferenceConfig {
   backend: string;
@@ -99,6 +108,15 @@ export const BACKEND_CATALOG: BackendOption[] = [
     recommended: "recommended for >13B",
     tier: "stable",
     tooltip: "vLLM is a high-throughput serving engine using PagedAttention for efficient KV cache management. Supports continuous batching, tensor parallelism, AWQ/GPTQ quantization, and speculative decoding for maximum inference speed.",
+  },
+  {
+    id: "aphrodite",
+    label: "Aphrodite",
+    description: "VPTQ 2-bit, AWQ, GPTQ, BitsAndBytes — widest quantization support.",
+    bestFor: "VPTQ 2-bit compression, large models on limited VRAM",
+    recommended: "required for VPTQ",
+    tier: "stable",
+    tooltip: "Aphrodite Engine is a vLLM fork with native VPTQ support. It's the only engine that can serve VPTQ 2-bit quantized models, cutting memory usage in half vs AWQ 4-bit. OpenAI-compatible API, same PagedAttention architecture as vLLM.",
   },
   {
     id: "localai",

@@ -37,7 +37,7 @@ export const pullProgressMap = new Map<string, PullProgress>();
 export interface ModelInstanceConfig {
   modelName: string;
   displayName: string;
-  backend: "ollama" | "vllm";
+  backend: "ollama" | "vllm" | "aphrodite";
   quantization: string;
   turboQuant: boolean;
   speculativeDecoding: boolean;
@@ -78,6 +78,7 @@ const PILOX_NETWORK = "pilox-network";
 const OLLAMA_IMAGE = process.env.OLLAMA_IMAGE || "ollama/ollama:latest";
 const VLLM_IMAGE = process.env.VLLM_IMAGE || "vllm/vllm-openai:latest";
 const VLLM_VPTQ_IMAGE = process.env.VLLM_VPTQ_IMAGE || "pilox-vllm-vptq:latest";
+const APHRODITE_IMAGE = process.env.APHRODITE_IMAGE || "alpindale/aphrodite-openai:latest";
 
 // ── Create instance ─────────────────────────────────
 
@@ -119,10 +120,12 @@ export async function createModelInstance(config: ModelInstanceConfig): Promise<
   }).returning();
 
   try {
-    // Create the container
-    const containerInfo = config.backend === "vllm"
-      ? await createVllmContainer(row.id, config)
-      : await createOllamaContainer(row.id, config);
+    // Create the container — route to the right backend
+    const containerInfo = config.backend === "aphrodite"
+      ? await createAphroditeContainer(row.id, config)
+      : config.backend === "vllm"
+        ? await createVllmContainer(row.id, config)
+        : await createOllamaContainer(row.id, config);
 
     // Update DB with container info
     await db.update(modelInstances)
@@ -511,6 +514,87 @@ async function createVllmContainer(
   };
 }
 
+// ── Aphrodite container (VPTQ + all quants) ────────
+
+async function createAphroditeContainer(
+  instanceId: string,
+  config: ModelInstanceConfig,
+): Promise<{ containerId: string; ip: string; port: number }> {
+  const containerName = `pilox-aphrodite-${sanitizeName(config.modelName)}-${instanceId.slice(0, 8)}`;
+  const hostPort = await findFreePort(2243, 2299);
+  const effectiveQuant = config.vptq ? "vptq" : config.quantization;
+  const hfModelName = resolveVllmModelName(config.modelName, effectiveQuant);
+
+  log.info("Aphrodite model resolved", { original: config.modelName, resolved: hfModelName, quantization: effectiveQuant });
+
+  // Aphrodite uses the same CLI as vLLM but supports VPTQ natively
+  const aphroditeArgs = [
+    "--model", hfModelName,
+    "--host", "0.0.0.0", "--port", "2242",
+    "--max-model-len", String(config.maxContextLen),
+    "--gpu-memory-utilization", "0.9",
+    "--trust-remote-code",
+  ];
+
+  if (config.cpuOffloadGB > 0) {
+    aphroditeArgs.push("--cpu-offload-gb", String(config.cpuOffloadGB));
+  }
+  if (config.prefixCaching) {
+    aphroditeArgs.push("--enable-prefix-caching");
+  }
+  // Aphrodite supports VPTQ natively — pass quantization for all types
+  if (effectiveQuant === "vptq") {
+    aphroditeArgs.push("--quantization", "vptq");
+  } else if (effectiveQuant === "awq") {
+    aphroditeArgs.push("--quantization", "awq");
+  } else if (effectiveQuant === "gptq") {
+    aphroditeArgs.push("--quantization", "gptq");
+  }
+  // KV cache compression
+  if (config.turboQuant) {
+    aphroditeArgs.push("--kv-cache-dtype", "fp8");
+  }
+
+  const createOpts: Record<string, unknown> = {
+    Image: APHRODITE_IMAGE,
+    name: containerName,
+    Cmd: aphroditeArgs,
+    Env: [
+      `HUGGING_FACE_HUB_TOKEN=${process.env.HUGGING_FACE_HUB_TOKEN || ""}`,
+    ],
+    ExposedPorts: { "2242/tcp": {} },
+    HostConfig: {
+      Binds: ["pilox_vllm_data:/root/.cache/huggingface"],
+      PortBindings: { "2242/tcp": [{ HostPort: String(hostPort) }] },
+      NetworkMode: PILOX_NETWORK,
+      RestartPolicy: { Name: "unless-stopped" },
+      DeviceRequests: [{
+        Driver: "nvidia",
+        Count: -1,
+        Capabilities: [["gpu"]],
+      }],
+      // Aphrodite needs IPC host for shared memory
+      IpcMode: "host",
+    },
+    Labels: {
+      "pilox-managed": "true",
+      "pilox-type": "model-instance",
+      "pilox-model": config.modelName,
+      "pilox-instance-id": instanceId,
+      "pilox-backend": "aphrodite",
+    },
+  };
+
+  const container = await docker.createContainer(createOpts as Parameters<typeof docker.createContainer>[0]);
+  await container.start();
+
+  return {
+    containerId: container.id,
+    ip: containerName,
+    port: 2242,
+  };
+}
+
 // ── Ollama container ────────────────────────────────
 
 async function createOllamaContainer(
@@ -724,9 +808,11 @@ async function updateModelInstance(id: string, config: ModelInstanceConfig): Pro
   }).where(eq(modelInstances.id, id));
 
   // Recreate container with new settings
-  const containerInfo = config.backend === "vllm"
-    ? await createVllmContainer(id, config)
-    : await createOllamaContainer(id, config);
+  const containerInfo = config.backend === "aphrodite"
+    ? await createAphroditeContainer(id, config)
+    : config.backend === "vllm"
+      ? await createVllmContainer(id, config)
+      : await createOllamaContainer(id, config);
 
   await db.update(modelInstances).set({
     instanceId: containerInfo.containerId,

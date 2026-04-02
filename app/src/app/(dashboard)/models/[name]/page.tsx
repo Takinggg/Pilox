@@ -21,7 +21,7 @@ import { BackendSelector } from "@/components/settings/inference/backend-selecto
 import { OptimizationPanel } from "@/components/settings/inference/optimization-panel";
 import { PerformancePreview } from "@/components/settings/inference/performance-preview";
 import { Tooltip } from "@/components/settings/inference/tooltip";
-import { QUANT_OPTIONS, type Quantization } from "@/components/settings/inference/types";
+import { QUANT_OPTIONS, BACKEND_QUANTS, type Quantization } from "@/components/settings/inference/types";
 
 // ── Types ──────────────────────────────────────────
 
@@ -160,18 +160,22 @@ export default function ModelDetailPage() {
                 {QUANT_OPTIONS.map((q) => {
                   const paramB = modelDef ? parseFloat(modelDef.parameterSize) || 0 : 0;
                   const sizeGB = paramB * 2 * (q.bits / 16);
+                  const supported = BACKEND_QUANTS[s.selectedBackend]?.includes(q.value) ?? true;
                   return (
                     <div key={q.value} className="flex items-center">
                       <button
                         type="button"
-                        onClick={() => s.setQuantization(q.value)}
+                        onClick={() => supported && s.setQuantization(q.value)}
+                        disabled={!supported}
                         className={`flex flex-col items-start rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
-                          s.quantization === q.value
-                            ? "bg-primary text-primary-foreground"
-                            : "border border-border bg-card text-muted-foreground hover:text-foreground"
+                          !supported
+                            ? "border border-border/50 bg-card/50 text-muted-foreground/40 cursor-not-allowed"
+                            : s.quantization === q.value
+                              ? "bg-primary text-primary-foreground"
+                              : "border border-border bg-card text-muted-foreground hover:text-foreground"
                         }`}
                       >
-                        <span>{q.label}</span>
+                        <span>{q.label}{!supported ? " (not supported)" : ""}</span>
                         {paramB > 0 && (
                           <span className={`text-[9px] font-normal ${s.quantization === q.value ? "text-primary-foreground/70" : "text-muted-foreground/60"}`}>
                             ~{sizeGB.toFixed(1)} GB
