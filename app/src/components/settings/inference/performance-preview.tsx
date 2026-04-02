@@ -261,8 +261,8 @@ export function PerformancePreview({
         <div
           className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium ${
             estimate.fits
-              ? "bg-green-500/10 text-green-500"
-              : "bg-destructive/10 text-destructive"
+              ? "bg-pilox-green/15 text-pilox-green"
+              : "bg-destructive/15 text-destructive"
           }`}
         >
           {estimate.fits ? (
@@ -314,11 +314,11 @@ function MetricCard({ value, unit }: { value: string; unit: string }) {
 type TagColor = "primary" | "blue" | "purple" | "green" | "yellow";
 
 const TAG_STYLES: Record<TagColor, string> = {
-  primary: "bg-primary/10 text-primary",
-  blue: "bg-pilox-blue/10 text-pilox-blue",
-  purple: "bg-pilox-purple/10 text-pilox-purple",
-  green: "bg-pilox-green/10 text-pilox-green",
-  yellow: "bg-pilox-yellow/10 text-pilox-yellow",
+  primary: "bg-primary/20 text-primary",
+  blue: "bg-pilox-blue/20 text-pilox-blue",
+  purple: "bg-pilox-purple/20 text-pilox-purple",
+  green: "bg-pilox-green/20 text-pilox-green",
+  yellow: "bg-pilox-yellow/20 text-pilox-yellow",
 };
 
 function Tag({ color, children }: { color: TagColor; children: React.ReactNode }) {
