@@ -449,18 +449,17 @@ async function createVllmContainer(
   if (config.prefixCaching) {
     vllmArgs.push("--enable-prefix-caching");
   }
-  // Quantization: pre-quantized checkpoints already have the right weights,
-  // but vLLM still needs the --quantization flag to know how to interpret them.
-  // Only pass the flag if we're actually using a quantized checkpoint (not FP16).
-  const resolvedQuant = config.vptq ? "vptq" : config.quantization;
-  if (resolvedQuant === "vptq" && hfModelName.toLowerCase().includes("vptq")) {
-    vllmArgs.push("--quantization", "vptq");
-  } else if (resolvedQuant === "awq" && hfModelName.toLowerCase().includes("awq")) {
-    vllmArgs.push("--quantization", "awq");
-  } else if (resolvedQuant === "gptq" && hfModelName.toLowerCase().includes("gptq")) {
-    vllmArgs.push("--quantization", "gptq");
+  // Quantization: pre-quantized checkpoints are auto-detected by vLLM.
+  // Only pass --quantization for AWQ/GPTQ (natively supported).
+  // VPTQ is auto-detected from the checkpoint config — do NOT pass --quantization vptq
+  // (it's not in vLLM's allowed quantization methods list).
+  if (!config.vptq) {
+    if (config.quantization === "awq" && hfModelName.toLowerCase().includes("awq")) {
+      vllmArgs.push("--quantization", "awq");
+    } else if (config.quantization === "gptq" && hfModelName.toLowerCase().includes("gptq")) {
+      vllmArgs.push("--quantization", "gptq");
+    }
   }
-  // Don't pass --quantization for FP16 or if checkpoint doesn't match quant type
 
   // KV cache quantization (TurboQuant → FP8 KV cache in vLLM)
   if (config.turboQuant) {
