@@ -28,6 +28,11 @@ elif [ -z "${DATABASE_URL:-}" ]; then
   echo "[entrypoint] WARNING: DATABASE_URL not set — skipping migrations"
 else
   echo "[entrypoint] Running database migrations..."
+  # Enum additions must run outside transactions (Postgres limitation).
+  # Drizzle wraps migrations in transactions so ALTER TYPE ADD VALUE is silently skipped.
+  # Run them here before Drizzle to guarantee they're applied.
+  PGURI="$DATABASE_URL"
+  psql "$PGURI" -c "ALTER TYPE model_instance_backend ADD VALUE IF NOT EXISTS 'aphrodite';" 2>/dev/null || true
   node /app/migrate.cjs
 fi
 
