@@ -386,9 +386,10 @@ async function ensureVptqImage(): Promise<void> {
     // Pull base image first (if not present)
     try {
       await new Promise<void>((resolve, reject) => {
-        docker.pull(VLLM_IMAGE, {}, (err: Error | null, stream: NodeJS.ReadableStream) => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (docker as any).pull(VLLM_IMAGE, {}, (err: any, stream: any) => {
           if (err) return reject(err);
-          docker.modem.followProgress(stream, (e: Error | null) => e ? reject(e) : resolve());
+          (docker as any).modem.followProgress(stream, (e: any) => e ? reject(e) : resolve());
         });
       });
     } catch { /* base image may already be present */ }
