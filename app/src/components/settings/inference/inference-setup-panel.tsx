@@ -435,17 +435,22 @@ function ExpertModeContent({
         >
           Back
         </button>
-        <button
-          type="button"
-          onClick={() => {
-            const idx = EXPERT_STEPS.findIndex((s) => s.key === step);
-            if (idx < EXPERT_STEPS.length - 1) onStepChange(EXPERT_STEPS[idx + 1].key);
-          }}
-          disabled={step === EXPERT_STEPS[EXPERT_STEPS.length - 1].key}
-          className="rounded-lg bg-primary/10 px-4 py-2 text-sm font-medium text-primary transition-colors hover:bg-primary/20 disabled:invisible"
-        >
-          Next
-        </button>
+        {step !== EXPERT_STEPS[EXPERT_STEPS.length - 1].key ? (
+          <button
+            type="button"
+            onClick={() => {
+              const idx = EXPERT_STEPS.findIndex((s) => s.key === step);
+              if (idx < EXPERT_STEPS.length - 1) onStepChange(EXPERT_STEPS[idx + 1].key);
+            }}
+            className="rounded-lg bg-primary/10 px-4 py-2 text-sm font-medium text-primary transition-colors hover:bg-primary/20"
+          >
+            Next
+          </button>
+        ) : (
+          <span className="text-xs text-muted-foreground italic">
+            Review the performance preview below, then apply.
+          </span>
+        )}
       </div>
     </>
   );

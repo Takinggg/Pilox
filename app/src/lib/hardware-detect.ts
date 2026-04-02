@@ -142,43 +142,58 @@ async function detectGpuViaOllama(): Promise<GpuInfo> {
 }
 
 /**
- * Try running nvidia-smi inside the ollama container via docker exec.
- * This works when pilox-app has access to the Docker socket.
+ * Detect GPU via dockerode — exec nvidia-smi inside the Ollama container.
+ * Works when pilox-app has the Docker socket mounted (no docker CLI needed).
  */
 async function detectGpuViaDockerExec(): Promise<GpuInfo> {
   try {
-    // Find the Ollama container
-    const { stdout: psOut } = await execFileAsync("docker", [
-      "ps", "--format", "{{.Names}}", "--filter", "ancestor=ollama/ollama",
-    ], { timeout: 5_000 });
+    const docker = (await import("./docker")).default;
 
-    let containerName = psOut.trim().split("\n")[0];
-    if (!containerName) {
-      // Try alternate filter
-      const { stdout: psOut2 } = await execFileAsync("docker", [
-        "ps", "--format", "{{.Names}}", "--filter", "name=ollama",
-      ], { timeout: 5_000 });
-      containerName = psOut2.trim().split("\n")[0];
+    // Find the Ollama container
+    const containers = await docker.listContainers({ all: false });
+    const ollamaContainer = containers.find(
+      (c: { Names: string[]; Image: string }) =>
+        c.Names.some((n: string) => n.includes("ollama")) ||
+        c.Image.includes("ollama"),
+    );
+
+    if (!ollamaContainer) return { name: "None", vramMB: 0, available: false };
+
+    const container = docker.getContainer(ollamaContainer.Id);
+
+    // Exec nvidia-smi inside the Ollama container via dockerode
+    const exec = await container.exec({
+      Cmd: ["nvidia-smi", "--query-gpu=name,memory.total", "--format=csv,noheader,nounits"],
+      AttachStdout: true,
+      AttachStderr: true,
+    });
+
+    const stream = await exec.start({ Detach: false, Tty: false });
+
+    // Collect stdout
+    const output = await new Promise<string>((resolve, reject) => {
+      let data = "";
+      const timeout = setTimeout(() => resolve(data), 10_000);
+      stream.on("data", (chunk: Buffer) => { data += chunk.toString(); });
+      stream.on("end", () => { clearTimeout(timeout); resolve(data); });
+      stream.on("error", (e: Error) => { clearTimeout(timeout); reject(e); });
+    });
+
+    // Parse — Docker stream may have 8-byte header per frame, clean it
+    const cleanOutput = output.replace(/[\x00-\x1F\x7F]/g, " ").trim();
+
+    // Look for GPU name and VRAM in the output
+    const nameMatch = cleanOutput.match(/(NVIDIA[^,\n]+|GeForce[^,\n]+)/);
+    const vramMatch = cleanOutput.match(/(\d{4,6})/); // VRAM in MB = 4-6 digits
+    if (nameMatch && vramMatch) {
+      return {
+        name: nameMatch[1].trim(),
+        vramMB: parseInt(vramMatch[1], 10),
+        available: true,
+      };
     }
 
-    if (!containerName) return { name: "None", vramMB: 0, available: false };
-
-    // Run nvidia-smi inside the ollama container
-    const { stdout } = await execFileAsync("docker", [
-      "exec", containerName, "nvidia-smi",
-      "--query-gpu=name,memory.total",
-      "--format=csv,noheader,nounits",
-    ], { timeout: 10_000 });
-
-    const line = stdout.trim().split("\n")[0];
-    if (!line) return { name: "None", vramMB: 0, available: false };
-
-    const [name, vramStr] = line.split(",").map((s) => s.trim());
-    return {
-      name: name || "Unknown GPU",
-      vramMB: parseInt(vramStr || "0", 10),
-      available: true,
-    };
+    return { name: "None", vramMB: 0, available: false };
   } catch {
     return { name: "None", vramMB: 0, available: false };
   }
