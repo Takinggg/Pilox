@@ -3,6 +3,7 @@ import { headers } from "next/headers";
 import { Inter, Space_Grotesk, JetBrains_Mono } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 import "./globals.css";
+import "./tokens.css";
 
 export const dynamic = "force-dynamic";
 
