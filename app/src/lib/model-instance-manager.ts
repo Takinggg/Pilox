@@ -200,17 +200,17 @@ async function createVllmContainer(
     ],
     ExposedPorts: { "8000/tcp": {} },
     HostConfig: {
+      // Share vLLM HuggingFace cache so models aren't re-downloaded
+      Binds: ["pilox_vllm_data:/root/.cache/huggingface"],
       PortBindings: { "8000/tcp": [{ HostPort: String(hostPort) }] },
       NetworkMode: PILOX_NETWORK,
       RestartPolicy: { Name: "unless-stopped" },
       // GPU access
-      ...(config.gpuEnabled && {
-        DeviceRequests: [{
-          Driver: "nvidia",
-          Count: -1, // all GPUs
-          Capabilities: [["gpu"]],
-        }],
-      }),
+      DeviceRequests: [{
+        Driver: "nvidia",
+        Count: -1, // all GPUs
+        Capabilities: [["gpu"]],
+      }],
     },
     Labels: {
       "pilox-managed": "true",
@@ -244,17 +244,17 @@ async function createOllamaContainer(
     name: containerName,
     ExposedPorts: { "11434/tcp": {} },
     HostConfig: {
+      // Share the Ollama data volume so already-pulled models are available
+      Binds: ["pilox_ollama_data:/root/.ollama"],
       PortBindings: { "11434/tcp": [{ HostPort: String(hostPort) }] },
       NetworkMode: PILOX_NETWORK,
       RestartPolicy: { Name: "unless-stopped" },
-      // GPU access for Ollama too (it auto-detects and uses GPU)
-      ...(config.gpuEnabled && {
-        DeviceRequests: [{
-          Driver: "nvidia",
-          Count: -1,
-          Capabilities: [["gpu"]],
-        }],
-      }),
+      // GPU access (auto-detected by Ollama)
+      DeviceRequests: [{
+        Driver: "nvidia",
+        Count: -1,
+        Capabilities: [["gpu"]],
+      }],
     },
     Labels: {
       "pilox-managed": "true",
