@@ -183,12 +183,22 @@ async function detectGpuViaDockerExec(): Promise<GpuInfo> {
       stream.on("error", (e: Error) => { clearTimeout(timeout); reject(e); });
     });
 
-    // Parse — Docker stream may have 8-byte header per frame, clean it
+    // Parse CSV output: "NVIDIA GeForce RTX 3080, 10240"
     const cleanOutput = output.replace(/[\x00-\x1F\x7F]/g, " ").trim();
 
-    // Look for GPU name and VRAM in the output
+    // Split by comma — nvidia-smi CSV format is "name, memory_total_mb"
+    const parts = cleanOutput.split(",").map((s) => s.trim());
+    if (parts.length >= 2) {
+      const name = parts[0];
+      const vramMB = parseInt(parts[1], 10);
+      if (name && vramMB > 0) {
+        return { name, vramMB, available: true };
+      }
+    }
+
+    // Fallback: regex match
     const nameMatch = cleanOutput.match(/(NVIDIA[^,\n]+|GeForce[^,\n]+)/);
-    const vramMatch = cleanOutput.match(/(\d{4,6})/); // VRAM in MB = 4-6 digits
+    const vramMatch = cleanOutput.match(/,\s*(\d{4,6})/); // VRAM after comma
     if (nameMatch && vramMatch) {
       return {
         name: nameMatch[1].trim(),
