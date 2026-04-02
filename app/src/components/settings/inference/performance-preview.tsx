@@ -13,6 +13,8 @@ interface PerformancePreviewProps {
   benchmarking?: boolean;
   benchmarkResult?: BenchmarkResult | null;
   onRunBenchmark?: () => void;
+  isPulling?: boolean;
+  needsRedeploy?: boolean;
 }
 
 // ── Resource bar ────────────────────────────────────
@@ -57,7 +59,7 @@ function ResourceBar({
 
 export function PerformancePreview({
   hardware, config, estimate,
-  benchmarking, benchmarkResult, onRunBenchmark,
+  benchmarking, benchmarkResult, onRunBenchmark, isPulling, needsRedeploy,
 }: PerformancePreviewProps) {
   const gpuTotalGB = mbToGB(hardware.gpu.vramMB);
   const ramTotalGB = mbToGB(hardware.ram.totalMB, 0);
@@ -175,7 +177,7 @@ export function PerformancePreview({
               <button
                 type="button"
                 onClick={onRunBenchmark}
-                disabled={benchmarking || !estimate.fits}
+                disabled={benchmarking || !estimate.fits || isPulling || needsRedeploy}
                 className="flex items-center gap-1.5 rounded-lg bg-pilox-blue/10 px-3 py-1.5 text-xs font-medium text-pilox-blue transition-colors hover:bg-pilox-blue/20 disabled:opacity-50"
               >
                 {benchmarking ? (
@@ -183,7 +185,13 @@ export function PerformancePreview({
                 ) : (
                   <Play className="h-3 w-3" />
                 )}
-                {benchmarking ? "Running..." : "Run Benchmark"}
+                {isPulling
+                  ? "Model pulling..."
+                  : needsRedeploy
+                    ? "Deploy first"
+                    : benchmarking
+                      ? "Running..."
+                      : "Run Benchmark"}
               </button>
             </div>
 

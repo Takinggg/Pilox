@@ -62,6 +62,10 @@ export interface InferenceSetupState {
   // Deploy progress (live download tracking)
   deployProgress: DeployProgress | null;
 
+  // Existing instance + settings diff
+  existingInstance: { id: string; status: string; backend: string } | null;
+  needsRedeploy: boolean;
+
   // Delete Ollama prompt (shown when switching to vLLM)
   showDeleteOllamaPrompt: boolean;
 }
@@ -179,6 +183,24 @@ export function useInferenceSetup(): UseInferenceSetup {
       .catch(() => {});
   }, []);
 
+  // ── Fetch existing instance for selected model ────
+  useEffect(() => {
+    if (!selectedModel) { setExistingInstance(null); return; }
+    fetch("/api/system/inference/instances", { credentials: "include" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        const instances = d?.instances as ExistingInstance[] | undefined;
+        const match = instances?.find((i) => i.modelName === selectedModel);
+        setExistingInstance(match ?? null);
+        // If instance is currently pulling, auto-start progress stream
+        if (match && (match.status === "pulling" || match.status === "creating")) {
+          startProgressStream(match.id);
+        }
+      })
+      .catch(() => setExistingInstance(null));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedModel]);
+
   // ── Initial hardware scan ─────────────────────────
   useEffect(() => {
     fetch("/api/system/hardware", { credentials: "include" })
@@ -254,6 +276,22 @@ export function useInferenceSetup(): UseInferenceSetup {
   const [instanceError, setInstanceError] = useState<string | null>(null);
   const [deployProgress, setDeployProgress] = useState<DeployProgress | null>(null);
   const [showDeleteOllamaPrompt, setShowDeleteOllamaPrompt] = useState(false);
+
+  // ── Existing instance for current model ──────────
+  interface ExistingInstance {
+    id: string;
+    modelName: string;
+    status: string;
+    backend: string;
+    quantization: string;
+    turboQuant: boolean;
+    speculativeDecoding: boolean;
+    cpuOffloadGB: number;
+    maxContextLen: number;
+    prefixCaching: boolean;
+    vptq: boolean;
+  }
+  const [existingInstance, setExistingInstance] = useState<ExistingInstance | null>(null);
 
   // Cleanup SSE on unmount
   const progressAbortRef = useRef<AbortController | null>(null);
@@ -440,11 +478,15 @@ export function useInferenceSetup(): UseInferenceSetup {
               // Calculate percentage
               const pct = evt.total && evt.total > 0
                 ? Math.round((evt.completed ?? 0) / evt.total * 100)
-                : 0;
+                : -1; // -1 = indeterminate (no total yet)
               const statusText = evt.status === "pulling manifest"
                 ? "Pulling manifest..."
-                : pct > 0 ? `${pct}%` : (evt.status ?? "Downloading...");
-              setDeployProgress({ percent: pct, status: statusText, instanceId });
+                : evt.status === "creating"
+                  ? "Creating container..."
+                  : evt.status === "pulling" && pct < 0
+                    ? "Waiting for download..."
+                    : pct > 0 ? `${pct}%` : (evt.status ?? "Downloading...");
+              setDeployProgress({ percent: Math.max(0, pct), status: statusText, instanceId });
             } catch { /* malformed event */ }
           }
         }
@@ -470,13 +512,31 @@ export function useInferenceSetup(): UseInferenceSetup {
 
   const selectedModelDef = installedModels.find((m) => m.name === selectedModel);
 
+  // Check if current wizard settings differ from the deployed instance
+  const needsRedeploy = (() => {
+    if (!existingInstance) return true; // no instance deployed at all
+    if (existingInstance.status !== "running") return true; // not running
+    // Compare settings
+    return (
+      existingInstance.backend !== selectedBackend ||
+      existingInstance.quantization !== quantization ||
+      existingInstance.turboQuant !== turboQuant ||
+      existingInstance.speculativeDecoding !== speculative ||
+      existingInstance.cpuOffloadGB !== cpuOffload ||
+      existingInstance.maxContextLen !== contextLen ||
+      existingInstance.prefixCaching !== prefixCaching ||
+      existingInstance.vptq !== vptq
+    );
+  })();
+
   return {
     // State
     mode, step, loading, applying, hardware, config, estimate,
     selectedBackend, selectedModel, quantization, turboQuant, speculative,
     cpuOffload, contextLen, prefixCaching, vptq, modelSearch,
     installedModels, filteredModels, maxOffloadGB, selectedModelDef,
-    benchmarking, benchmarkResult, instanceStatus, instanceError, deployProgress, showDeleteOllamaPrompt,
+    benchmarking, benchmarkResult, instanceStatus, instanceError,
+    deployProgress, showDeleteOllamaPrompt, existingInstance, needsRedeploy,
     // Actions
     setMode, setStep, setSelectedBackend, setSelectedModel, setQuantization,
     setTurboQuant, setSpeculative, setCpuOffload, setContextLen,

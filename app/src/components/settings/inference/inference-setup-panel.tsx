@@ -108,6 +108,8 @@ export function InferenceSetupPanel() {
           benchmarking={s.benchmarking}
           benchmarkResult={s.benchmarkResult}
           onRunBenchmark={s.runBenchmark}
+          isPulling={!!s.deployProgress && s.deployProgress.percent < 100}
+          needsRedeploy={s.needsRedeploy}
         />
       )}
 
@@ -162,12 +164,16 @@ export function InferenceSetupPanel() {
               {s.selectedModelDef?.name || s.selectedModel}
             </span>
             <div className="flex-1 h-1.5 overflow-hidden rounded-full bg-[var(--pilox-border)]">
-              <div
-                className="h-full rounded-full bg-primary transition-all duration-300"
-                style={{ width: `${s.deployProgress.percent}%` }}
-              />
+              {s.deployProgress.percent > 0 ? (
+                <div
+                  className="h-full rounded-full bg-primary transition-all duration-300"
+                  style={{ width: `${s.deployProgress.percent}%` }}
+                />
+              ) : (
+                <div className="h-full w-1/3 rounded-full bg-primary/60 animate-pulse" />
+              )}
             </div>
-            <span className="text-[10px] text-muted-foreground shrink-0 w-16 text-right">
+            <span className="text-[10px] text-muted-foreground shrink-0 w-24 text-right">
               {s.deployProgress.status}
             </span>
           </div>
@@ -201,8 +207,24 @@ export function InferenceSetupPanel() {
             className="flex h-10 items-center gap-2 rounded-lg bg-primary px-6 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
           >
             {s.applying && <Loader2 className="h-4 w-4 animate-spin" />}
-            {s.applying ? "Creating instance..." : "Deploy Instance"}
+            {s.applying
+              ? "Creating instance..."
+              : s.needsRedeploy
+                ? s.existingInstance
+                  ? "Redeploy Instance"
+                  : "Deploy Instance"
+                : "Instance up to date"}
           </button>
+          {!s.needsRedeploy && s.existingInstance && (
+            <span className="text-xs text-primary">
+              Instance running — settings match
+            </span>
+          )}
+          {s.needsRedeploy && s.existingInstance && (
+            <span className="text-xs text-pilox-yellow">
+              Settings changed — redeploy needed
+            </span>
+          )}
         </div>
       )}
     </div>
