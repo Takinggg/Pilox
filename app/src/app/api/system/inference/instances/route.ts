@@ -15,7 +15,7 @@ import { z } from "zod";
 const createSchema = z.object({
   modelName: z.string().min(1).max(512),
   displayName: z.string().min(1).max(255),
-  backend: z.enum(["ollama", "vllm"]),
+  backend: z.enum(["ollama", "vllm", "aphrodite"]),
   quantization: z.string().default("Q4_K_M"),
   turboQuant: z.boolean().default(false),
   speculativeDecoding: z.boolean().default(false),
