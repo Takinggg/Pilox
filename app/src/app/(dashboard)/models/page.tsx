@@ -177,6 +177,84 @@ export default function ModelsPage() {
     }
   }
 
+  async function pullVllmModel(awqModelId: string, displayKey: string, modelName: string, estimatedVram?: number) {
+    if (downloadStates.has(displayKey)) return;
+    updateDownloadState(displayKey, { progress: 0, status: "Configuring vLLM...", error: undefined });
+
+    try {
+      const res = await fetch("/api/models/pull-vllm", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ model: awqModelId, quantization: "awq" }),
+      });
+      const data = await res.json().catch(() => ({})) as {
+        ok?: boolean; status?: string; message?: string; restartError?: string;
+        instructions?: { step1?: string; step2?: string | null; step3?: string };
+      };
+
+      if (res.ok && data.status === "restarting") {
+        // Auto-restart succeeded
+        updateDownloadState(displayKey, { progress: 50, status: "vLLM restarting — downloading model from HuggingFace..." });
+        toast.success(`${modelName} AWQ 4-bit is loading. vLLM will download the model on startup (${estimatedVram ?? "?"}GB VRAM required).`);
+        // Poll for model availability
+        pollVllmReady(displayKey);
+      } else if (res.ok && data.status === "env-updated") {
+        // .env updated but container restart failed — show fallback toast
+        updateDownloadState(displayKey, { progress: 25, status: "Config saved — manual restart needed" });
+        toast.info(
+          `docker/.env updated with VLLM_MODEL=${awqModelId}.\n` +
+          `Restart vLLM to apply:\n${data.instructions?.step3 ?? "docker compose up -d --force-recreate vllm"}`,
+          { duration: 15000 },
+        );
+        setTimeout(() => removeDownloadState(displayKey), 8000);
+      } else {
+        // Full fallback
+        updateDownloadState(displayKey, { error: data.restartError || data.message || `Failed (${res.status})` });
+        toast.info(
+          `To load ${modelName} AWQ 4-bit:\n1. ${data.instructions?.step1 ?? `Set VLLM_MODEL=${awqModelId} in docker/.env`}\n2. Restart vLLM container\nEstimated VRAM: ${estimatedVram ?? "?"}GB`,
+          { duration: 15000 },
+        );
+      }
+    } catch (err) {
+      updateDownloadState(displayKey, { error: "Network error" });
+    }
+  }
+
+  function pollVllmReady(displayKey: string) {
+    let attempts = 0;
+    const maxAttempts = 60; // 5 min (every 5s)
+    const timer = setInterval(async () => {
+      attempts++;
+      if (attempts > maxAttempts) {
+        clearInterval(timer);
+        updateDownloadState(displayKey, { progress: 100, status: "vLLM may still be downloading. Check container logs." });
+        setTimeout(() => removeDownloadState(displayKey), 5000);
+        return;
+      }
+
+      try {
+        const vllmUrl = "/api/system/inference";
+        const res = await fetch(vllmUrl);
+        if (res.ok) {
+          const data = await res.json().catch(() => ({})) as { models?: string[] };
+          if (data.models && data.models.length > 0) {
+            clearInterval(timer);
+            updateDownloadState(displayKey, { progress: 100, status: "Model loaded!" });
+            toast.success(`Model ready on vLLM`);
+            setTimeout(() => {
+              removeDownloadState(displayKey);
+              void fetchModels();
+            }, 3000);
+          } else {
+            updateDownloadState(displayKey, { progress: 30 + Math.min(60, attempts), status: `Downloading model... (${attempts * 5}s)` });
+          }
+        }
+      } catch {
+        // vLLM not ready yet
+      }
+    }, 5000);
+  }
+
   async function pullModel(ollamaName: string, displayKey?: string) {
     const key = displayKey ?? ollamaName;
     if (downloadStates.has(key)) return; // already pulling
@@ -612,13 +690,12 @@ export default function ModelsPage() {
                           </span>
                         ) : model.awqModelId ? (
                           <button
-                            onClick={() => {
-                              toast.info(`To load ${model.name} AWQ 4-bit:\n1. Set VLLM_MODEL=${model.awqModelId} in docker/.env\n2. Restart vLLM container\nEstimated VRAM: ${model.vramEstimate?.awq4 ?? "?"}GB`);
-                            }}
-                            className="flex h-8 items-center gap-1.5 rounded-lg border border-[var(--pilox-purple)]/40 bg-[var(--pilox-purple)]/5 px-3 text-[11px] font-medium text-[var(--pilox-purple)] hover:bg-[var(--pilox-purple)]/10"
+                            onClick={() => pullVllmModel(model.awqModelId!, model.id, model.name, model.vramEstimate?.awq4)}
+                            disabled={isDownloading}
+                            className="flex h-8 items-center gap-1.5 rounded-lg border border-[var(--pilox-purple)]/40 bg-[var(--pilox-purple)]/5 px-3 text-[11px] font-medium text-[var(--pilox-purple)] hover:bg-[var(--pilox-purple)]/10 disabled:opacity-40"
                           >
-                            <Zap className="h-3 w-3" />
-                            AWQ 4-bit ({model.vramEstimate?.awq4 ?? "?"}GB)
+                            {isDownloading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Zap className="h-3 w-3" />}
+                            {isDownloading ? "Loading..." : `AWQ 4-bit (${model.vramEstimate?.awq4 ?? "?"}GB)`}
                           </button>
                         ) : model.ollamaId ? (
                           <button
