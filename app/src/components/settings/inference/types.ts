@@ -219,8 +219,8 @@ export function mbToGB(mb: number, decimals = 1): string {
 export function categoryBadgeColor(cat: ModelOption["category"]): string {
   switch (cat) {
     case "chat": return "bg-primary/15 text-primary";
-    case "code": return "bg-[var(--pilox-blue)]/15 text-[var(--pilox-blue)]";
-    case "multimodal": return "bg-[var(--pilox-purple)]/15 text-[var(--pilox-purple)]";
+    case "code": return "bg-pilox-blue/15 text-pilox-blue";
+    case "multimodal": return "bg-pilox-purple/15 text-pilox-purple";
   }
 }
 

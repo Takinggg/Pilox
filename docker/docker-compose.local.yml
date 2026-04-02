@@ -115,7 +115,7 @@ services:
       - "3000:3000"
     environment:
       # Must match app/docker-compose.yml postgres (same POSTGRES_PASSWORD default or your .env).
-      DATABASE_URL: postgresql://pilox:${POSTGRES_PASSWORD:-PiloxLocalDockerPg2026xStrong}@pilox-postgres:5432/pilox
+      DATABASE_URL: postgresql://pilox:${POSTGRES_PASSWORD:?Run scripts/start.sh or set POSTGRES_PASSWORD in docker/.env}@pilox-postgres:5432/pilox
       REDIS_URL: redis://redis:6379
       AUTH_URL: http://localhost:3000
       AUTH_SECRET: ${AUTH_SECRET}

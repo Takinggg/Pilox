@@ -48,7 +48,7 @@ export function BackendSelector({ enabled, onToggle }: BackendSelectorProps) {
                   </span>
                 )}
                 {b.tier === "experimental" && (
-                  <span className="rounded bg-[var(--pilox-yellow)]/10 px-1.5 py-0.5 text-[9px] font-semibold text-[var(--pilox-yellow)]">
+                  <span className="rounded bg-pilox-yellow/10 px-1.5 py-0.5 text-[9px] font-semibold text-pilox-yellow">
                     experimental
                   </span>
                 )}

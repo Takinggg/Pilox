@@ -32,7 +32,7 @@ function ResourceBar({
     percent > 95
       ? "bg-destructive"
       : percent > 80
-        ? "bg-[var(--pilox-yellow)]"
+        ? "bg-pilox-yellow"
         : "bg-primary";
 
   return (
@@ -77,8 +77,8 @@ export function PerformancePreview({
           </div>
           <div className="grid grid-cols-4 gap-2">
             <BreakdownItem label="Weights" value={`${mem.weightsGB} GB`} color="text-foreground" />
-            <BreakdownItem label="KV Cache" value={`${mem.kvCacheGB} GB`} color="text-[var(--pilox-purple)]" />
-            <BreakdownItem label="Draft Model" value={`${mem.draftModelGB} GB`} color="text-[var(--pilox-green)]" />
+            <BreakdownItem label="KV Cache" value={`${mem.kvCacheGB} GB`} color="text-pilox-purple" />
+            <BreakdownItem label="Draft Model" value={`${mem.draftModelGB} GB`} color="text-pilox-green" />
             <BreakdownItem label="Total" value={`${mem.totalGB} GB`} color="text-primary" bold />
           </div>
         </div>
@@ -144,7 +144,7 @@ export function PerformancePreview({
             {estimate.warnings.map((w, i) => (
               <div
                 key={i}
-                className="flex items-start gap-2 text-xs text-[var(--pilox-yellow)]"
+                className="flex items-start gap-2 text-xs text-pilox-yellow"
               >
                 <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0" />
                 {w}
@@ -176,7 +176,7 @@ export function PerformancePreview({
                 type="button"
                 onClick={onRunBenchmark}
                 disabled={benchmarking || !estimate.fits}
-                className="flex items-center gap-1.5 rounded-lg bg-[var(--pilox-blue)]/10 px-3 py-1.5 text-xs font-medium text-[var(--pilox-blue)] transition-colors hover:bg-[var(--pilox-blue)]/20 disabled:opacity-50"
+                className="flex items-center gap-1.5 rounded-lg bg-pilox-blue/10 px-3 py-1.5 text-xs font-medium text-pilox-blue transition-colors hover:bg-pilox-blue/20 disabled:opacity-50"
               >
                 {benchmarking ? (
                   <Loader2 className="h-3 w-3 animate-spin" />
@@ -193,7 +193,7 @@ export function PerformancePreview({
                 {benchmarkResult.success ? (
                   <div className="grid grid-cols-4 gap-3">
                     <div className="text-center">
-                      <span className="text-sm font-bold text-[var(--pilox-blue)]">
+                      <span className="text-sm font-bold text-pilox-blue">
                         {benchmarkResult.tokensPerSec}
                       </span>
                       <span className="block text-[10px] text-muted-foreground">
@@ -231,10 +231,10 @@ export function PerformancePreview({
                         const delta = Math.round(Math.abs(1 - ratio) * 100);
                         return (
                           <div className="flex items-center gap-2 text-xs">
-                            <Zap className="h-3 w-3 text-[var(--pilox-blue)]" />
+                            <Zap className="h-3 w-3 text-pilox-blue" />
                             <span className="text-muted-foreground">
                               Real performance is{" "}
-                              <span className={ratio >= 0.9 ? "font-medium text-[var(--pilox-green)]" : "font-medium text-[var(--pilox-yellow)]"}>
+                              <span className={ratio >= 0.9 ? "font-medium text-pilox-green" : "font-medium text-pilox-yellow"}>
                                 {ratio >= 1 ? `${delta}% faster` : `${delta}% slower`}
                               </span>
                               {" "}than estimated
@@ -261,7 +261,7 @@ export function PerformancePreview({
         <div
           className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium ${
             estimate.fits
-              ? "bg-[var(--pilox-green)]/10 text-[var(--pilox-green)]"
+              ? "bg-green-500/10 text-green-500"
               : "bg-destructive/10 text-destructive"
           }`}
         >
@@ -315,10 +315,10 @@ type TagColor = "primary" | "blue" | "purple" | "green" | "yellow";
 
 const TAG_STYLES: Record<TagColor, string> = {
   primary: "bg-primary/10 text-primary",
-  blue: "bg-[var(--pilox-blue)]/10 text-[var(--pilox-blue)]",
-  purple: "bg-[var(--pilox-purple)]/10 text-[var(--pilox-purple)]",
-  green: "bg-[var(--pilox-green)]/10 text-[var(--pilox-green)]",
-  yellow: "bg-[var(--pilox-yellow)]/10 text-[var(--pilox-yellow)]",
+  blue: "bg-pilox-blue/10 text-pilox-blue",
+  purple: "bg-pilox-purple/10 text-pilox-purple",
+  green: "bg-pilox-green/10 text-pilox-green",
+  yellow: "bg-pilox-yellow/10 text-pilox-yellow",
 };
 
 function Tag({ color, children }: { color: TagColor; children: React.ReactNode }) {

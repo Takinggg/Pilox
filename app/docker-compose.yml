@@ -7,7 +7,7 @@ services:
       POSTGRES_USER: pilox
       # Strong default for Docker Desktop + docker/docker-compose.local.yml (NODE_ENV=production in app image).
       # Override: POSTGRES_PASSWORD=... in the environment or an env file when running compose.
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-PiloxLocalDockerPg2026xStrong}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Run scripts/start.sh or set POSTGRES_PASSWORD in docker/.env}
       POSTGRES_DB: pilox
     ports:
       - "5432:5432"

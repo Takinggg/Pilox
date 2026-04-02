@@ -108,11 +108,11 @@ export function OptimizationPanel({
                 </div>
                 <p className="text-xs text-muted-foreground">{opt.description}</p>
                 <div className="mt-1 flex flex-wrap gap-2">
-                  <span className="rounded bg-[var(--pilox-green)]/10 px-1.5 py-0.5 text-[10px] font-medium text-[var(--pilox-green)]">
+                  <span className="rounded bg-pilox-green/10 px-1.5 py-0.5 text-[10px] font-medium text-pilox-green">
                     {opt.impact}
                   </span>
                   {opt.cost && (
-                    <span className="rounded bg-[var(--pilox-yellow)]/10 px-1.5 py-0.5 text-[10px] font-medium text-[var(--pilox-yellow)]">
+                    <span className="rounded bg-pilox-yellow/10 px-1.5 py-0.5 text-[10px] font-medium text-pilox-yellow">
                       {opt.cost}
                     </span>
                   )}
@@ -140,7 +140,7 @@ export function OptimizationPanel({
               Offload excess model layers to system RAM.
             </p>
           </div>
-          <span className="ml-4 shrink-0 rounded bg-[var(--pilox-blue)]/10 px-2 py-1 font-mono text-sm font-medium text-[var(--pilox-blue)]">
+          <span className="ml-4 shrink-0 rounded bg-pilox-blue/10 px-2 py-1 font-mono text-sm font-medium text-pilox-blue">
             {cpuOffload} GB
           </span>
         </div>

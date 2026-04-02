@@ -34,6 +34,11 @@
   --color-secondary-foreground: var(--secondary-foreground);
   --color-secondary: var(--secondary);
   --color-primary-foreground: var(--primary-foreground);
+  --color-pilox-green: var(--pilox-green);
+  --color-pilox-blue: var(--pilox-blue);
+  --color-pilox-yellow: var(--pilox-yellow);
+  --color-pilox-purple: var(--pilox-purple);
+  --color-pilox-orange: var(--pilox-orange);
   --color-primary: var(--primary);
   --color-popover-foreground: var(--popover-foreground);
   --color-popover: var(--popover);
