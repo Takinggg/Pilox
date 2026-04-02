@@ -272,21 +272,71 @@ const MODEL_REGISTRY: Record<string, HfCheckpoints> = {
  * Resolve model name + quantization to the correct HuggingFace checkpoint.
  * vLLM needs pre-quantized checkpoints — it can't quantize on-the-fly.
  */
+/** Normalize a display name or mixed-case name to a registry key.
+ * "Qwen 2.5 72B Instruct" → "qwen2.5:72b"
+ * "DeepSeek R1 Distill Llama 70B" → "deepseek-r1:70b" */
+function normalizeToRegistryKey(name: string): string | null {
+  const n = name.toLowerCase().trim();
+
+  // Direct match
+  if (MODEL_REGISTRY[n]) return n;
+  if (MODEL_REGISTRY[name]) return name;
+
+  // Build lookup from display-like names → registry keys
+  const displayMap: Record<string, string> = {
+    "qwen 2.5 72b instruct": "qwen2.5:72b",
+    "qwen 2.5 32b instruct": "qwen2.5:32b",
+    "qwen 2.5 14b instruct": "qwen2.5:14b",
+    "qwen 2.5 7b instruct": "qwen2.5:7b",
+    "qwen2.5 72b instruct": "qwen2.5:72b",
+    "qwen2.5 32b instruct": "qwen2.5:32b",
+    "qwen2.5 14b instruct": "qwen2.5:14b",
+    "qwen2.5 7b instruct": "qwen2.5:7b",
+    "deepseek r1 distill llama 70b": "deepseek-r1:70b",
+    "deepseek r1 distill qwen 32b": "deepseek-r1:32b",
+    "deepseek r1 distill qwen 14b": "deepseek-r1:14b",
+    "deepseek r1 distill qwen 7b": "deepseek-r1:7b",
+    "deepseek-r1 distill llama 70b": "deepseek-r1:70b",
+    "llama 3.3 70b instruct": "llama3.3",
+    "llama 3.1 8b instruct": "llama3.1:8b",
+    "llama 3.1 70b instruct": "llama3.1:70b",
+    "mistral 7b instruct": "mistral:7b",
+    "mixtral 8x7b instruct": "mixtral:8x7b",
+    "gemma 2 9b": "gemma2:9b",
+    "gemma 2 27b": "gemma2:27b",
+  };
+
+  if (displayMap[n]) return displayMap[n];
+
+  // Try fuzzy: strip "instruct", normalize spaces/dashes, extract size
+  const stripped = n.replace(/[-_]/g, " ").replace(/instruct(ed)?/gi, "").trim();
+  if (displayMap[stripped]) return displayMap[stripped];
+
+  return null;
+}
+
 function resolveVllmModelName(modelName: string, quantization?: string): string {
   // Already a HF ID (contains /) — use as-is
   if (modelName.includes("/")) return modelName;
 
+  // Try direct registry lookup
   const entry = MODEL_REGISTRY[modelName] || MODEL_REGISTRY[modelName.toLowerCase()];
-  if (!entry) {
-    // Strip Ollama tag suffix and try again
-    const base = modelName.split(":")[0];
-    const baseEntry = MODEL_REGISTRY[base];
-    if (baseEntry) return pickCheckpoint(baseEntry, quantization, modelName);
-    log.warn("No HuggingFace checkpoint mapping for model", { modelName, quantization });
-    return modelName;
+  if (entry) return pickCheckpoint(entry, quantization, modelName);
+
+  // Try normalizing display names → registry keys
+  const key = normalizeToRegistryKey(modelName);
+  if (key && MODEL_REGISTRY[key]) {
+    log.info("Resolved display name to registry key", { displayName: modelName, key });
+    return pickCheckpoint(MODEL_REGISTRY[key], quantization, modelName);
   }
 
-  return pickCheckpoint(entry, quantization, modelName);
+  // Strip Ollama tag suffix and try again
+  const base = modelName.split(":")[0];
+  const baseEntry = MODEL_REGISTRY[base];
+  if (baseEntry) return pickCheckpoint(baseEntry, quantization, modelName);
+
+  log.warn("No HuggingFace checkpoint mapping for model", { modelName, quantization });
+  return modelName;
 }
 
 function pickCheckpoint(entry: HfCheckpoints, quantization: string | undefined, modelName: string): string {
