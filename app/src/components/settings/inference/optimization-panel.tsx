@@ -47,7 +47,7 @@ export function OptimizationPanel({
   onCpuOffloadChange,
   onContextLenChange,
 }: OptimizationPanelProps) {
-  const hasVllm = selectedBackend === "vllm";
+  const hasVllm = selectedBackend === "vllm" || selectedBackend === "aphrodite";
 
   // Map optimization IDs to their current state + setter
   const toggleMap: Record<string, { value: boolean; set: (v: boolean) => void }> = {
@@ -118,7 +118,7 @@ export function OptimizationPanel({
                   )}
                   {disabled && (
                     <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
-                      Requires vLLM
+                      Requires vLLM or Aphrodite
                     </span>
                   )}
                 </div>
