@@ -29,11 +29,15 @@ export interface HardwareProfile {
  * that can reach Ollama over the network).
  */
 async function detectGpu(): Promise<GpuInfo> {
-  // Strategy 1: nvidia-smi (direct GPU access)
+  // Strategy 1: nvidia-smi locally (works on host / GPU-enabled containers)
   const smiResult = await detectGpuViaNvidiaSmi();
   if (smiResult.available) return smiResult;
 
-  // Strategy 2: Ollama API (GPU info from the inference container)
+  // Strategy 2: nvidia-smi via dockerode exec in Ollama container (exact VRAM)
+  const dockerResult = await detectGpuViaDockerExec();
+  if (dockerResult.available) return dockerResult;
+
+  // Strategy 3: Ollama API (estimated VRAM from loaded model — less accurate)
   const ollamaResult = await detectGpuViaOllama();
   if (ollamaResult.available) return ollamaResult;
 
