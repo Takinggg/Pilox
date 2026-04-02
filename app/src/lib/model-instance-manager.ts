@@ -546,10 +546,9 @@ async function createAphroditeContainer(
   if (config.prefixCaching) {
     aphroditeArgs.push("--enable-prefix-caching");
   }
-  // Quantization — Aphrodite supports VPTQ natively
-  if (effectiveQuant === "vptq") {
-    aphroditeArgs.push("--quantization", "vptq");
-  } else if (effectiveQuant === "awq") {
+  // Quantization — VPTQ is auto-detected from checkpoint config, don't pass the flag.
+  // Only pass --quantization for AWQ/GPTQ which are in the allowed list.
+  if (effectiveQuant === "awq") {
     aphroditeArgs.push("--quantization", "awq");
   } else if (effectiveQuant === "gptq") {
     aphroditeArgs.push("--quantization", "gptq");
