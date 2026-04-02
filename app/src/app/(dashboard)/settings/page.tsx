@@ -40,6 +40,7 @@ import {
   SlidersHorizontal,
   RotateCcw,
   Library,
+  Zap,
 } from "lucide-react";
 import type { A2APublicStatusPayload } from "@/lib/a2a/status-types";
 import { A2ASettingsPanel } from "@/components/settings/a2a-settings-panel";
@@ -52,6 +53,7 @@ import { BillingSettingsPanel } from "@/components/settings/billing-settings-pan
 import { MfaSettingsPanel } from "@/components/settings/mfa-settings-panel";
 import { RuntimeInstanceConfigPanel } from "@/components/settings/runtime-instance-config-panel";
 import { PublicRegistrySettingsPanel } from "@/components/settings/public-registry-settings-panel";
+import { InferenceSetupPanel } from "@/components/settings/inference";
 
 type SettingsTab =
   | "general"
@@ -64,6 +66,7 @@ type SettingsTab =
   | "a2a"
   | "federation"
   | "marketplace"
+  | "inference"
   | "llm-providers"
   | "security"
   | "appearance"
@@ -142,6 +145,7 @@ const ALL_SETTINGS_TABS: {
   { key: "security", label: "Security", icon: Shield, minRole: "admin", group: "Security" },
   { key: "backups", label: "Backups", icon: Database, minRole: "admin", group: "Security" },
   // Integrations
+  { key: "inference", label: "Inference", icon: Zap, minRole: "admin", group: "Integrations" },
   { key: "llm-providers", label: "LLM Providers", icon: Brain, minRole: "admin", group: "Integrations" },
   { key: "marketplace", label: "Marketplace", icon: Store, minRole: "operator", group: "Integrations" },
   { key: "public-registry", label: "Public registry", icon: Library, minRole: "operator", group: "Integrations" },
@@ -1586,6 +1590,9 @@ function SettingsPageInner() {
         {tab === "public-registry" && (
           <PublicRegistrySettingsPanel currentRole={currentRole} />
         )}
+
+        {/* ─── Inference ─── */}
+        {tab === "inference" && <InferenceSetupPanel />}
 
         {/* ─── LLM Providers ─── */}
         {tab === "llm-providers" && <LlmProvidersPanel />}
